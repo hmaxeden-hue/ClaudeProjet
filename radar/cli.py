@@ -195,6 +195,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             log.warning("Stufe %s noch nicht implementiert: %s", schritt, e)
             print(f"[run] gestoppt bei '{schritt}': {e}")
             return 0
+    # Retention als letzter Schritt der Tageskette (30-Tage-Löschung, automatisch).
+    try:
+        cmd_retention(args)
+    except Exception as e:  # noqa: BLE001 — Retention darf den Lauf nicht killen
+        log.warning("Retention übersprungen: %s", e)
     return 0
 
 

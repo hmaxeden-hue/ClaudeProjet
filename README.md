@@ -78,6 +78,32 @@ uv run radar status
   aktivieren, API-Key erzeugen. Default-Quota: 10 000 Einheiten/Tag.
 - **Anthropic:** Key aus der [Console](https://console.anthropic.com/).
 
+### Täglicher Ablauf & Automatisierung
+
+Manuell die volle Kette:
+
+```bash
+uv run radar run          # discover → fetch → analyze → report
+uv run radar run --dry-run  # alles außer Versand
+```
+
+Automatisch werktags um 07:00 Uhr (macOS launchd):
+
+```bash
+./scripts/install-schedule.sh              # installieren/aktualisieren
+launchctl kickstart -k gui/$(id -u)/com.aibusinessradar.daily  # sofort testen
+./scripts/install-schedule.sh --uninstall  # entfernen
+```
+
+Verpasste Läufe (Rechner im Ruhezustand zur geplanten Zeit) holt launchd beim
+Aufwachen automatisch nach.
+
+### Zustellung (optional)
+
+Der Bericht landet immer in `reports/`. Zusätzlicher Versand ist per
+`config.yaml` aktivierbar (`zustellung.email.aktiv` / `zustellung.telegram.aktiv`);
+die zugehörigen Zugangsdaten kommen aus `.env` (SMTP\_\* bzw. TELEGRAM\_\*).
+
 ### Konfiguration
 
 Alles Nicht-Geheime steht in `config.yaml`. Zentral ist das **`profil`-Feld**:
@@ -104,9 +130,9 @@ Interessen anpassen (Kanäle per `@handle`, `channel_id` oder URL).
   verarbeitet. **Keine Video-Downloads.**
 - Transkripte werden **nicht weiterverbreitet** und dienen nur der lokalen
   Analyse.
-- **Retention:** Transkripte werden nach **30 Tagen** (konfigurierbar) via
-  `radar retention` automatisch aus der DB gelöscht. Metadaten und die
-  abgeleitete Analyse bleiben erhalten.
+- **Retention:** Transkripte werden nach **30 Tagen** (konfigurierbar) gelöscht.
+  Das läuft automatisch als letzter Schritt von `radar run` (oder manuell via
+  `radar retention`). Metadaten und die abgeleitete Analyse bleiben erhalten.
 - `reports/` und die DB sind per `.gitignore` vom Repo ausgeschlossen, da sie
   ausgewertete Inhalte enthalten.
 
@@ -139,6 +165,7 @@ radar/            # Paket
   report.py       # Stufe 6 (Synthese + Markdown-Aufbau)
   delivery.py     # optionaler Versand (SMTP/Telegram)
 migrations/       # SQL-Schema
+scripts/          # install-schedule.sh (launchd)
 tests/            # pytest
 config.yaml       # Konfiguration
 .env.example      # Secret-Vorlage
@@ -153,8 +180,12 @@ config.yaml       # Konfiguration
 - [x] **3. Transkripte** — yt-dlp-Integration, VTT-Parser, Rate-Limiting
 - [x] **4. Analyse** — LLM, strukturierte Outputs, Kostentracking *(Qualitätskern)*
 - [x] **5. Clustering & Report** — Themenerkennung, Wiederholungsabgleich, Report-Synthese
-- [ ] **6. Zustellung & Scheduling** — SMTP/Telegram *(fertig)*, launchd-Job *(folgt)*
-- [ ] **7. Härtung** — mehr Tests, Retention-Job im Zeitplan, README final
+- [x] **6. Zustellung & Scheduling** — SMTP/Telegram, launchd-Job (werktags 07:00, Nachhol-Verhalten)
+- [x] **7. Härtung** — Tests (Parser/Filter/Analyse/Report/Cluster), Retention-Job, README
+
+> **Offen für dich:** Der inhaltliche Live-Test des Analyse-Prompts an echten
+> Videos (`discover → fetch → analyze → review`) braucht API-Keys und ist
+> bewusst dir überlassen — dort sitzt die eigentliche Qualitätskontrolle.
 
 ### Nicht-Ziele
 
