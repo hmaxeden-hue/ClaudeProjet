@@ -12,13 +12,17 @@ from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Tier → vertrauens_score. Kanäle können statt eines Scores ein Tier angeben.
+TIER_SCORES: dict[str, float] = {"A": 9.0, "B": 6.0, "C": 3.0}
 
 
 class Kanal(BaseModel):
     handle: str | None = None
     channel_id: str | None = None
-    name: str
+    name: str | None = None
+    tier: str | None = None
     vertrauens_score: float = 5.0
     aktiv: bool = True
 
@@ -26,6 +30,20 @@ class Kanal(BaseModel):
     @classmethod
     def _leer_zu_none(cls, v: str | None) -> str | None:
         return v or None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _tier_und_name(cls, data):
+        if isinstance(data, dict):
+            tier = data.get("tier")
+            # Tier setzt den Score nur, wenn kein expliziter Score angegeben ist.
+            if tier and "vertrauens_score" not in data:
+                data["vertrauens_score"] = TIER_SCORES.get(str(tier).upper(), 5.0)
+            # Name aus Handle ableiten, falls nicht gesetzt (wird beim Auflösen
+            # durch den echten Kanaltitel ersetzt).
+            if not data.get("name") and data.get("handle"):
+                data["name"] = str(data["handle"]).lstrip("@")
+        return data
 
 
 class ScoreGewichte(BaseModel):

@@ -33,32 +33,25 @@ modelle:
 # beim ersten Lauf automatisch aufgelöst und in der DB gecacht.
 # vertrauens_score (0-10): fließt als leichtes Gewicht in die Priorisierung
 # ein – für Kanäle, denen du inhaltlich mehr traust, höher setzen.
+# tier: A → vertrauens_score 9, B → 6, C → 3 (siehe TIER_SCORES in radar/config.py).
+# Alternativ vertrauens_score direkt angeben (überschreibt das Tier).
+# Der Kanalname wird beim ersten Lauf automatisch aus der API aufgelöst.
 kanaele:
-  - handle: "@ThePrimeagen"
-    name: "ThePrimeagen"
-    vertrauens_score: 6
-    aktiv: true
-  - handle: "@t3dotgg"
-    name: "Theo - t3.gg"
-    vertrauens_score: 6
-    aktiv: true
-  - handle: "@aiDotEngineer"
-    name: "AI Engineer"
-    vertrauens_score: 7
-    aktiv: true
-  - handle: "@indydevdan"
-    name: "IndyDevDan"
-    vertrauens_score: 6
-    aktiv: true
-  - handle: "@YCombinator"
-    name: "Y Combinator"
-    vertrauens_score: 7
-    aktiv: true
-  # --- Platzhalter: eigene Kanäle hier ergänzen ---
-  # - handle: "@deinKanal"
-  #   name: "Dein Kanal"
-  #   vertrauens_score: 5
-  #   aktiv: true
+  # Tier A — vertrauens_score 9
+  - {handle: "@aiexplained-official", tier: A}
+  - {handle: "@Fireship", tier: A}
+  - {handle: "@LatentSpacePod", tier: A}
+  - {handle: "@ycombinator", tier: A}
+  - {handle: "@anthropic-ai", tier: A}
+  - {handle: "@OpenAI", tier: A}
+  - {handle: "@Google_DeepMind", tier: A}
+  # Tier B — vertrauens_score 6
+  - {handle: "@nateherk", tier: B}
+  - {handle: "@matthew_berman", tier: B}
+  - {handle: "@CorbinBrown", tier: B}
+  - {handle: "@indydevdan", tier: B}
+  - {handle: "@GregIsenberg", tier: B}
+  - {handle: "@mreflow", tier: B}
 
 # ---------------------------------------------------------------------------
 # Discovery-Quelle B: Keyword-Suche (Ergänzung, streng budgetiert)
