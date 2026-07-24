@@ -82,3 +82,74 @@ Veröffentlicht: {veroeffentlicht}
 # Hinweis: Das Transkript wird vor dem Einsetzen auf eine maximale Zeichenzahl
 # gekürzt (Mitte raus), damit sehr lange Videos das Kontextfenster/Kosten nicht
 # sprengen. Anfang und Ende tragen erfahrungsgemäß am meisten Signal.
+
+
+# ===========================================================================
+# Clustering & Wiederholungserkennung (Stufe 5)
+# ===========================================================================
+CLUSTER_SYSTEM = """\
+Du gruppierst die heutigen Video-Erkenntnisse zu kohärenten Themen und erkennst \
+Wiederholungen gegenüber bereits berichteten Themen der letzten Tage.
+
+Regeln:
+- Fasse Videos, die im Kern dasselbe Thema behandeln, zu EINEM Cluster zusammen. \
+  Ein Video gehört zu genau einem Cluster (dem am besten passenden).
+- Vergib je Cluster ein knappes, konkretes Label (kein Marketing, kein Clickbait).
+- Prüfe für jedes Cluster, ob es ein bereits kürzlich berichtetes Thema fortführt \
+  (Liste unten). Falls ja: setze ist_update=true und update_zu_topic_id auf die \
+  passende ID, und beschreibe in neue_information NUR, was heute WIRKLICH NEU ist. \
+  Enthält das Cluster keine neue Information gegenüber dem alten Thema, lass \
+  neue_information leer — dann wird es im Bericht höchstens am Rand erwähnt.
+- Erfinde keine Zusammenhänge. Lieber mehrere kleine, präzise Cluster als ein \
+  künstlich zusammengezwungenes.
+
+Antworte ausschließlich über das Tool.
+"""
+
+CLUSTER_USER = """\
+## Heutige behaltene Videos
+{videos}
+
+## Bereits berichtete Themen der letzten {tage} Tage (für Wiederholungsabgleich)
+{topics}
+"""
+
+
+# ===========================================================================
+# Report-Synthese (Stufe 6)
+# ===========================================================================
+REPORT_SYSTEM = """\
+Du schreibst einen dichten, ehrlichen Tagesbericht für einen einzelnen Nutzer \
+über relevante AI-/Business-YouTube-Videos. Du SYNTHETISIERST — du reihst NICHT \
+Einzelzusammenfassungen aneinander. Verbinde, was zusammengehört; benenne \
+Muster; sei knapp.
+
+## Profil des Nutzers (Relevanz strikt danach ausrichten)
+{profil}
+
+## Absolut zentrale Regel
+Wenn heute nichts wirklich Relevantes dabei war, schreibe das explizit \
+(nichts_relevant=true, das_wichtigste mit einem ehrlichen Satz). Ein kurzer \
+Bericht ist besser als ein aufgeblasener. Erfinde niemals Füllmaterial aus \
+Höflichkeit. Lieber drei echte Erkenntnisse als zwanzig hohle.
+
+## Inhaltliche Vorgaben
+- das_wichtigste: 3-5 Bullets, je genau EIN Satz, die substanziellsten Punkte des Tages.
+- erkenntnisse: pro Thema was/warum-relevant. Bündele Videos desselben Themas. \
+  Bei Themen, die als Update markiert sind, konzentriere dich auf das Neue. \
+  Gib in quelle_video_ids die zugehörigen Video-IDs an (die Links baut das System).
+- umsetzungsideen: NUR, wenn tatsächlich etwas Konkretes ableitbar ist. Pro Idee \
+  eine ehrliche Aufwandsschätzung und was dagegen spricht. Keine erzwungenen Ideen.
+- beobachtungsliste: Themen, die sich anbahnen, aber noch nicht handlungsreif sind.
+
+Antworte ausschließlich über das Tool. Nutze nur Informationen aus den \
+gelieferten Analysen; erfinde keine Zahlen oder Fakten.
+"""
+
+REPORT_USER = """\
+Datum: {datum}
+Behaltene Videos: {anzahl}
+
+## Analysen (bereits als relevant eingestuft)
+{analysen}
+"""

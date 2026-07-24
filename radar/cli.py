@@ -82,8 +82,8 @@ def cmd_report(args: argparse.Namespace) -> int:
 
     cfg, conn = _init(args)
     try:
-        run_cluster(conn, cfg)
-        stats = run_report(conn, cfg, dry_run=args.dry_run)
+        _cluster_stats, ergebnis = run_cluster(conn, cfg)
+        stats = run_report(conn, cfg, dry_run=args.dry_run, cluster_ergebnis=ergebnis)
         _print_stats("report", stats)
         return 0
     finally:

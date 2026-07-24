@@ -49,3 +49,32 @@ class TopicZuordnung(BaseModel):
 
 class ClusterErgebnis(BaseModel):
     topics: list[TopicZuordnung] = Field(default_factory=list)
+
+
+# --- Report-Synthese (Stufe 6) -------------------------------------------
+class Erkenntnis(BaseModel):
+    thema: str
+    was: str
+    warum_relevant: str
+    quelle_video_ids: list[str] = Field(default_factory=list)
+
+
+class Umsetzungsidee(BaseModel):
+    idee: str
+    aufwand: str = Field(description="grobe Aufwandsschätzung")
+    dagegen: str = Field(description="was dagegen spricht")
+
+
+class ReportInhalt(BaseModel):
+    """Vom Modell synthetisierter Berichtsinhalt. Kopf-Statistik und Quellen-
+    Links werden deterministisch aus der DB ergänzt (keine halluzinierten URLs)."""
+
+    nichts_relevant: bool = Field(
+        description="true, wenn heute nichts wirklich Relevantes dabei war"
+    )
+    das_wichtigste: list[str] = Field(
+        default_factory=list, description="3-5 Bullets, je 1 Satz"
+    )
+    erkenntnisse: list[Erkenntnis] = Field(default_factory=list)
+    umsetzungsideen: list[Umsetzungsidee] = Field(default_factory=list)
+    beobachtungsliste: list[str] = Field(default_factory=list)

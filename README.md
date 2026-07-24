@@ -26,7 +26,7 @@ Schritte debuggbar sind.
 | Discovery | `radar discover` | Kanal-Monitoring (quota-günstig) + budgetierte Keyword-Suche → Videos in DB, Vorfilter angewandt |
 | Transkripte | `radar fetch` | `yt-dlp` lädt Untertitel, VTT → Fliesstext, Rate-Limiting/Backoff |
 | Analyse | `radar analyze` | LLM prüft jedes Transkript auf Substanz, strukturierter JSON-Output, Kosten-/Mengen-Guardrails |
-| Report | `radar report` | *(folgt)* Themen-Clustering + finale Synthese → `reports/YYYY-MM-DD.md` |
+| Report | `radar report` | Themen-Clustering + Wiederholungsabgleich + finale Synthese → `reports/YYYY-MM-DD.md`, optionaler Versand |
 | Alles | `radar run` | Volle Kette |
 | — | `radar status` | Zustand (Videos nach Status) & Tagesbudget |
 | — | `radar review` | Gespeicherte Analysen lesbar ausgeben (`--nur-behalten`) |
@@ -135,7 +135,9 @@ radar/            # Paket
   filters.py      # Vorfilter (rein, testbar)
   youtube_api.py  # YouTube-Data-API-Wrapper
   quota.py        # Quota- & Kostentracking
-  cluster.py / report.py  # folgen
+  cluster.py      # Stufe 5 (Themen-Cluster, Wiederholungsabgleich)
+  report.py       # Stufe 6 (Synthese + Markdown-Aufbau)
+  delivery.py     # optionaler Versand (SMTP/Telegram)
 migrations/       # SQL-Schema
 tests/            # pytest
 config.yaml       # Konfiguration
@@ -150,8 +152,8 @@ config.yaml       # Konfiguration
 - [x] **2. Discovery** — Kanal-Monitoring + Quota-Tracking
 - [x] **3. Transkripte** — yt-dlp-Integration, VTT-Parser, Rate-Limiting
 - [x] **4. Analyse** — LLM, strukturierte Outputs, Kostentracking *(Qualitätskern)*
-- [ ] **5. Clustering & Report** — Themenerkennung, Report-Synthese
-- [ ] **6. Zustellung & Scheduling** — SMTP/Telegram, launchd-Job
+- [x] **5. Clustering & Report** — Themenerkennung, Wiederholungsabgleich, Report-Synthese
+- [ ] **6. Zustellung & Scheduling** — SMTP/Telegram *(fertig)*, launchd-Job *(folgt)*
 - [ ] **7. Härtung** — mehr Tests, Retention-Job im Zeitplan, README final
 
 ### Nicht-Ziele
