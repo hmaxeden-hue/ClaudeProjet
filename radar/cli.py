@@ -129,6 +129,53 @@ def cmd_status(args: argparse.Namespace) -> int:
         conn.close()
 
 
+def cmd_review(args: argparse.Namespace) -> int:
+    """Gibt gespeicherte Analysen lesbar aus — zum Beurteilen der Prompt-Qualität."""
+    import json as _json
+
+    cfg, conn = _init(args)
+    try:
+        wo = "WHERE a.verwerfen = 0" if args.nur_behalten else ""
+        rows = conn.execute(
+            f"""
+            SELECT v.titel, v.kanal_name, v.url, v.dauer_s, a.json_payload,
+                   a.gesamtscore, a.verwerfen, a.kosten_usd
+            FROM analyses a JOIN videos v ON v.video_id = a.video_id
+            {wo}
+            ORDER BY a.gesamtscore DESC
+            """
+        ).fetchall()
+        if not rows:
+            print("Noch keine Analysen in der DB. Erst: radar discover && radar fetch && radar analyze")
+            return 0
+        print(f"{len(rows)} Analysen (nach Gesamtscore sortiert):\n" + "=" * 72)
+        for r in rows:
+            a = _json.loads(r["json_payload"])
+            marke = "✗ VERWORFEN" if r["verwerfen"] else "✓ BEHALTEN"
+            print(f"\n{marke}  Gesamt {r['gesamtscore']:.1f}  "
+                  f"(S{a['substanz_score']:.0f}/N{a['neuheits_score']:.0f}/U{a['umsetzbarkeit_score']:.0f})  "
+                  f"${r['kosten_usd']:.4f}")
+            print(f"  {r['titel']}")
+            print(f"  {r['kanal_name']} · {round((r['dauer_s'] or 0)/60)} Min · {r['url']}")
+            print(f"  Kernaussage: {a['kernaussage']}")
+            if a.get("konkrete_erkenntnisse"):
+                print("  Erkenntnisse:")
+                for e in a["konkrete_erkenntnisse"]:
+                    print(f"    • {e}")
+            if a.get("genannte_tools"):
+                tools = ", ".join(t["name"] for t in a["genannte_tools"])
+                print(f"  Tools: {tools}")
+            if a.get("geschaeftsmodell_relevanz"):
+                print(f"  Business-Relevanz: {a['geschaeftsmodell_relevanz']}")
+            if a.get("hype_flags"):
+                print(f"  Hype-Flags: {', '.join(a['hype_flags'])}")
+            if r["verwerfen"] and a.get("verwerfen_grund"):
+                print(f"  Verwerfen-Grund: {a['verwerfen_grund']}")
+        return 0
+    finally:
+        conn.close()
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Volle Kette: discover → fetch → analyze → report. Fehler einer Stufe
     beenden die Kette kontrolliert, ohne bereits geleistete Arbeit zu verwerfen."""
@@ -181,6 +228,10 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("run", help="Volle Kette ausführen").set_defaults(fn=cmd_run)
     sub.add_parser("retention", help="Alte Transkripte löschen").set_defaults(fn=cmd_retention)
     sub.add_parser("status", help="Zustand & Budget anzeigen").set_defaults(fn=cmd_status)
+
+    pr = sub.add_parser("review", help="Gespeicherte Analysen lesbar ausgeben")
+    pr.add_argument("--nur-behalten", action="store_true", help="Nur behaltene Videos zeigen")
+    pr.set_defaults(fn=cmd_review)
     return p
 
 

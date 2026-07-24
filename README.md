@@ -25,10 +25,11 @@ Schritte debuggbar sind.
 |-------|--------|--------------|
 | Discovery | `radar discover` | Kanal-Monitoring (quota-günstig) + budgetierte Keyword-Suche → Videos in DB, Vorfilter angewandt |
 | Transkripte | `radar fetch` | `yt-dlp` lädt Untertitel, VTT → Fliesstext, Rate-Limiting/Backoff |
-| Analyse | `radar analyze` | *(folgt)* LLM prüft jedes Transkript auf Substanz, strukturierter JSON-Output |
+| Analyse | `radar analyze` | LLM prüft jedes Transkript auf Substanz, strukturierter JSON-Output, Kosten-/Mengen-Guardrails |
 | Report | `radar report` | *(folgt)* Themen-Clustering + finale Synthese → `reports/YYYY-MM-DD.md` |
 | Alles | `radar run` | Volle Kette |
 | — | `radar status` | Zustand (Videos nach Status) & Tagesbudget |
+| — | `radar review` | Gespeicherte Analysen lesbar ausgeben (`--nur-behalten`) |
 | — | `radar retention` | Transkripte älter als N Tage löschen |
 | — | `radar migrate` | DB-Schema anlegen/aktualisieren |
 
@@ -126,11 +127,15 @@ radar/            # Paket
   db.py           # SQLite: Verbindung, Migrationen
   discovery.py    # Stufe 1
   transcripts.py  # Stufe 3
+  analyze.py      # Stufe 4 (LLM-Substanzanalyse)
+  prompts.py      # Analyse-Prompt (Qualitätskern)
+  anthropic_client.py  # LLM-Wrapper (strukturierter Output via Tool-Use)
+  models.py       # Pydantic-Schemata der LLM-Outputs
   vtt.py          # VTT-Parser
   filters.py      # Vorfilter (rein, testbar)
   youtube_api.py  # YouTube-Data-API-Wrapper
   quota.py        # Quota- & Kostentracking
-  analyze.py / cluster.py / report.py  # folgen
+  cluster.py / report.py  # folgen
 migrations/       # SQL-Schema
 tests/            # pytest
 config.yaml       # Konfiguration
@@ -144,7 +149,7 @@ config.yaml       # Konfiguration
 - [x] **1. Setup** — Projektstruktur, Config-Schema, DB-Migrationen, `.env.example`, README
 - [x] **2. Discovery** — Kanal-Monitoring + Quota-Tracking
 - [x] **3. Transkripte** — yt-dlp-Integration, VTT-Parser, Rate-Limiting
-- [ ] **4. Analyse** — LLM, strukturierte Outputs, Kostentracking *(Qualitätskern)*
+- [x] **4. Analyse** — LLM, strukturierte Outputs, Kostentracking *(Qualitätskern)*
 - [ ] **5. Clustering & Report** — Themenerkennung, Report-Synthese
 - [ ] **6. Zustellung & Scheduling** — SMTP/Telegram, launchd-Job
 - [ ] **7. Härtung** — mehr Tests, Retention-Job im Zeitplan, README final
