@@ -1,0 +1,145 @@
+# ===========================================================================
+# AI-Business Radar — Konfiguration
+# Secrets stehen NICHT hier, sondern in .env (siehe .env.example).
+# ===========================================================================
+
+profil:
+  # Wird direkt in den Analyse- und Report-Prompt injiziert, damit Relevanz
+  # an DIR ausgerichtet wird statt an "Business" im Allgemeinen.
+  beschreibung: >
+    Solo-Entwickler in der Schweiz. Fokus auf kleine, eigenständig
+    baubare Softwareprodukte für den DACH-Markt. Stack: TypeScript,
+    SvelteKit. Interessiert an: Automatisierung, lokal-first Apps,
+    Nischenmärkten, realistischen Kosten- und Aufwandszahlen.
+    Nicht interessiert an: Agenturmodellen, Dropshipping,
+    Content-Creator-Businesses, Enterprise-Sales.
+
+modelle:
+  # Modell-IDs sind bewusst hier zentral – jederzeit austauschbar.
+  analyse: "claude-opus-4-8"          # ein Aufruf pro Video
+  report: "claude-opus-4-8"           # finale Synthese
+  clustering: "claude-opus-4-8"       # Themen-Cluster + Wiederholungsabgleich
+  # Preise pro 1M Tokens (USD) – für Kostentracking. Bei Modellwechsel anpassen.
+  preise:
+    claude-opus-4-8:
+      input_pro_1m: 5.00
+      output_pro_1m: 25.00
+
+# ---------------------------------------------------------------------------
+# Discovery-Quelle A: kuratiertes Kanal-Monitoring (Hauptquelle, quota-günstig)
+# ---------------------------------------------------------------------------
+# STARTER-LISTE – bitte anpassen. Du kannst Kanäle per Handle (@name),
+# per channel_id (UC...) oder per URL angeben; die uploads-Playlist wird
+# beim ersten Lauf automatisch aufgelöst und in der DB gecacht.
+# vertrauens_score (0-10): fließt als leichtes Gewicht in die Priorisierung
+# ein – für Kanäle, denen du inhaltlich mehr traust, höher setzen.
+kanaele:
+  - handle: "@ThePrimeagen"
+    name: "ThePrimeagen"
+    vertrauens_score: 6
+    aktiv: true
+  - handle: "@t3dotgg"
+    name: "Theo - t3.gg"
+    vertrauens_score: 6
+    aktiv: true
+  - handle: "@aiDotEngineer"
+    name: "AI Engineer"
+    vertrauens_score: 7
+    aktiv: true
+  - handle: "@indydevdan"
+    name: "IndyDevDan"
+    vertrauens_score: 6
+    aktiv: true
+  - handle: "@YCombinator"
+    name: "Y Combinator"
+    vertrauens_score: 7
+    aktiv: true
+  # --- Platzhalter: eigene Kanäle hier ergänzen ---
+  # - handle: "@deinKanal"
+  #   name: "Dein Kanal"
+  #   vertrauens_score: 5
+  #   aktiv: true
+
+# ---------------------------------------------------------------------------
+# Discovery-Quelle B: Keyword-Suche (Ergänzung, streng budgetiert)
+# ---------------------------------------------------------------------------
+keywords:
+  - "AI agents business workflow"
+  - "AI SaaS solo founder"
+  - "LLM automation small business"
+  - "AI tools 2026 review"
+  - "local-first app AI"
+  - "AI micro saas revenue"
+
+# ---------------------------------------------------------------------------
+# Vorfilter (billig, laufen VOR jedem LLM-Aufruf)
+# ---------------------------------------------------------------------------
+filter:
+  max_alter_tage: 3
+  min_dauer_s: 240          # < 4 Min: meist Werbung
+  max_dauer_s: 10800        # > 3 h: meist Livestream-Mitschnitt
+  sprachen: ["de", "en"]
+  min_gesamtscore: 6.0      # gewichteter Gesamtscore-Schwellwert für den Report
+  # Gewichtung der drei Analyse-Scores für den Gesamtscore (Summe wird normiert):
+  score_gewichte:
+    substanz: 0.4
+    neuheit: 0.3
+    umsetzbarkeit: 0.3
+  titel_blocklist:
+    - '\$\s*\d+k?\s*/?\s*(month|day|monat|tag)'
+    - '(?i)get rich'
+    - '(?i)passive income'
+    - '(?i)passives einkommen'
+    - '(?i)millionaire|millionär'
+    - '(?i)\bside hustle\b'
+    - '(?i)quit your job'
+  kanal_blocklist: []       # channel_ids (UC...), die nie ausgewertet werden
+
+# ---------------------------------------------------------------------------
+# Budget & Guardrails
+# ---------------------------------------------------------------------------
+budget:
+  youtube_quota_limit: 10000        # tägliches YouTube-Quota (Default-Kontingent)
+  quota_warn_schwelle: 0.8          # ab 80% verbrauchtem Quota Suche abschalten
+  suchen_pro_tag: 8                 # max. Keyword-Suchanfragen pro Tag
+  max_llm_kosten_pro_tag_usd: 1.50  # harter Kostendeckel für LLM-Aufrufe
+  max_videos_pro_tag: 40            # max. Videos, die pro Tag analysiert werden
+
+# ---------------------------------------------------------------------------
+# Transkript-Beschaffung
+# ---------------------------------------------------------------------------
+transkripte:
+  min_pause_s: 2.0          # minimale Pause zwischen yt-dlp-Requests
+  max_pause_s: 4.0
+  max_retries: 4            # exponentielles Backoff bei Fehlern
+
+# ---------------------------------------------------------------------------
+# Wiederholungserkennung / Clustering
+# ---------------------------------------------------------------------------
+clustering:
+  wiederholung_tage: 14     # Fenster, gegen das auf bereits Berichtetes geprüft wird
+
+# ---------------------------------------------------------------------------
+# Zustellung
+# ---------------------------------------------------------------------------
+zustellung:
+  # Datei nach reports/ wird IMMER geschrieben. Zusätzlich optional:
+  email:
+    aktiv: false
+    betreff: "AI-Business Radar — {datum}"
+  telegram:
+    aktiv: false
+
+# ---------------------------------------------------------------------------
+# Retention (rechtlich: Transkripte nicht dauerhaft speichern)
+# ---------------------------------------------------------------------------
+retention:
+  transkripte_tage: 30      # Transkripte älter als N Tage werden gelöscht
+
+# ---------------------------------------------------------------------------
+# Pfade
+# ---------------------------------------------------------------------------
+pfade:
+  db: "data/radar.db"
+  reports: "reports"
+  logs: "logs"
