@@ -176,6 +176,19 @@ def cmd_review(args: argparse.Namespace) -> int:
         conn.close()
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    from .dashboard import run_dashboard
+
+    cfg = lade_config(args.config)
+    setup_logging(cfg.logs_pfad, level=logging.INFO)
+    # DB einmal migrieren, damit die Seite sofort funktioniert
+    conn = verbinde(cfg.db_pfad)
+    migriere(conn, cfg.projekt_root / "migrations")
+    conn.close()
+    run_dashboard(cfg, port=args.port)
+    return 0
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Volle Kette: discover → fetch → analyze → report. Fehler einer Stufe
     beenden die Kette kontrolliert, ohne bereits geleistete Arbeit zu verwerfen."""
@@ -239,6 +252,10 @@ def _build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("review", help="Gespeicherte Analysen lesbar ausgeben")
     pr.add_argument("--nur-behalten", action="store_true", help="Nur behaltene Videos zeigen")
     pr.set_defaults(fn=cmd_review)
+
+    ps = sub.add_parser("serve", help="Lokales Dashboard im Browser starten")
+    ps.add_argument("--port", type=int, default=8756, help="Port (Default 8756)")
+    ps.set_defaults(fn=cmd_serve)
     return p
 
 

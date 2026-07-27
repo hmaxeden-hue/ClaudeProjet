@@ -28,6 +28,7 @@ Schritte debuggbar sind.
 | Analyse | `radar analyze` | LLM prüft jedes Transkript auf Substanz, strukturierter JSON-Output, Kosten-/Mengen-Guardrails |
 | Report | `radar report` | Themen-Clustering + Wiederholungsabgleich + finale Synthese → `reports/YYYY-MM-DD.md`, optionaler Versand |
 | Alles | `radar run` | Volle Kette |
+| — | `radar serve` | Lokales Dashboard im Browser (Knopf „Heute analysieren" + Berichte) |
 | — | `radar status` | Zustand (Videos nach Status) & Tagesbudget |
 | — | `radar review` | Gespeicherte Analysen lesbar ausgeben (`--nur-behalten`) |
 | — | `radar retention` | Transkripte älter als N Tage löschen |
@@ -78,9 +79,21 @@ uv run radar status
   aktivieren, API-Key erzeugen. Default-Quota: 10 000 Einheiten/Tag.
 - **Anthropic:** Key aus der [Console](https://console.anthropic.com/).
 
+### Dashboard (empfohlen für den Alltag)
+
+Eine private Seite auf dem eigenen Rechner (nur `127.0.0.1`, kein Netzwerk):
+
+```bash
+uv run radar serve        # öffnet http://127.0.0.1:8756 im Browser
+```
+
+Oben ein Knopf **„Heute analysieren"** (startet die volle Kette im Hintergrund
+und zeigt den Fortschritt), darunter der aktuelle Bericht formatiert und eine
+Liste älterer Berichte zum Anklicken.
+
 ### Täglicher Ablauf & Automatisierung
 
-Manuell die volle Kette:
+Manuell die volle Kette (ohne Dashboard):
 
 ```bash
 uv run radar run          # discover → fetch → analyze → report
