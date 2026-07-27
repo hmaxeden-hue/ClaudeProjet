@@ -18,8 +18,8 @@ modelle:
   # Modell-IDs sind bewusst hier zentral – jederzeit austauschbar.
   # EMPFEHLUNG: analyse auf "claude-sonnet-5" (rund halbe Kosten pro Video bei
   # sehr ähnlicher Substanzbewertung); report/clustering auf Opus lassen.
-  analyse: "claude-opus-4-8"          # ein Aufruf pro Video  ← Kandidat für claude-sonnet-5
-  report: "claude-opus-4-8"           # finale Synthese
+  analyse: "claude-sonnet-5"          # ein Aufruf pro Video (günstig; für Opus: "claude-opus-4-8")
+  report: "claude-opus-4-8"           # finale Synthese (stärkeres Modell)
   clustering: "claude-opus-4-8"       # Themen-Cluster + Wiederholungsabgleich
   # Preise pro 1M Tokens (USD) – für Kostentracking UND den Tagesdeckel.
   # WICHTIG: Jedes genutzte Modell muss hier stehen, sonst wird es mit $0
