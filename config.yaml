@@ -7,12 +7,18 @@ profil:
   # Wird direkt in den Analyse- und Report-Prompt injiziert, damit Relevanz
   # an DIR ausgerichtet wird statt an "Business" im Allgemeinen.
   beschreibung: >
-    Solo-Entwickler in der Schweiz. Fokus auf kleine, eigenständig
-    baubare Softwareprodukte für den DACH-Markt. Stack: TypeScript,
-    SvelteKit. Interessiert an: Automatisierung, lokal-first Apps,
-    Nischenmärkten, realistischen Kosten- und Aufwandszahlen.
-    Nicht interessiert an: Agenturmodellen, Dropshipping,
-    Content-Creator-Businesses, Enterprise-Sales.
+    Solo-Entwickler in der Schweiz mit technischem Hintergrund (TypeScript,
+    SvelteKit), der praktische, umsetzbare Wege sucht, mit AI konkret Geld zu
+    verdienen — von automatisierten Diensten und Micro-SaaS über E-Commerce-
+    und Automatisierungs-Bots (inkl. Dropshipping) bis zu Nischen-Workflows und
+    Nebeneinkommen. ENTSCHEIDEND ist harte Substanz: echte Zahlen (Umsatz,
+    Kosten, Zeitaufwand, Conversion), gezeigte Implementierungen, nachvollziehbare
+    Systeme, benannte Fehlschläge. Bevorzugt lokal-first und kleine, eigenständig
+    baubare Lösungen für den DACH-Markt, aber grundsätzlich offen für jede
+    erprobte Methode, solange sie belegt und nachbaubar ist.
+    NICHT interessiert an: reinem Kursverkauf, Coaching-/Community-Werbung,
+    unbelegten Einkommensbehauptungen, Motivations-/Hustle-Content und
+    oberflächlichen "Top 10 AI Tools"-Aufzählungen ohne eigene Ergebnisse.
 
 modelle:
   # Modell-IDs sind bewusst hier zentral – jederzeit austauschbar.
@@ -66,13 +72,26 @@ kanaele:
 # ---------------------------------------------------------------------------
 # Discovery-Quelle B: Keyword-Suche (Ergänzung, streng budgetiert)
 # ---------------------------------------------------------------------------
+# Themensuche ist jetzt die Hauptquelle (nach Datum sortiert = neueste zuerst).
+# Bewusst breit rund um "mit AI konkret Geld verdienen" — der Substanz-Filter in
+# der Analyse trennt echte Systeme mit Zahlen von Guru-/Kurs-Clickbait.
 keywords:
-  - "AI agents business workflow"
-  - "AI SaaS solo founder"
-  - "LLM automation small business"
-  - "AI tools 2026 review"
-  - "local-first app AI"
-  - "AI micro saas revenue"
+  - "AI automation business real results"
+  - "how I make money with AI agents"
+  - "AI side income automation"
+  - "AI dropshipping automation system"
+  - "AI micro saas revenue breakdown"
+  - "n8n AI workflow business case study"
+  - "AI agent build revenue numbers"
+  - "AI e-commerce automation store"
+  - "solo founder AI product build"
+  - "AI service business how much I earn"
+  - "AI lead generation system automated"
+  - "AI content automation income"
+  - "faceless AI business real"
+  - "local-first AI app build"
+  - "AI freelance automation clients"
+  - "small business AI automation ROI"
 
 # ---------------------------------------------------------------------------
 # Vorfilter (billig, laufen VOR jedem LLM-Aufruf)
@@ -88,14 +107,14 @@ filter:
     substanz: 0.4
     neuheit: 0.3
     umsetzbarkeit: 0.3
+  # Bewusst knapp gehalten: nur eindeutige Scam-Signale hart aussperren.
+  # Zahlen wie "$3k/month" sind jetzt ERWÜNSCHT (echte Case-Studies) — ob Beleg
+  # oder Guru-Behauptung, entscheidet die inhaltliche Analyse, nicht ein Regex.
   titel_blocklist:
-    - '\$\s*\d+k?\s*/?\s*(month|day|monat|tag)'
-    - '(?i)get rich'
-    - '(?i)passive income'
-    - '(?i)passives einkommen'
+    - '(?i)get rich quick'
     - '(?i)millionaire|millionär'
-    - '(?i)\bside hustle\b'
-    - '(?i)quit your job'
+    - '(?i)guaranteed income'
+    - '(?i)quit your (job|9-?5)'
   kanal_blocklist: []       # channel_ids (UC...), die nie ausgewertet werden
 
 # ---------------------------------------------------------------------------
@@ -104,9 +123,9 @@ filter:
 budget:
   youtube_quota_limit: 10000        # tägliches YouTube-Quota (Default-Kontingent)
   quota_warn_schwelle: 0.8          # ab 80% verbrauchtem Quota Suche abschalten
-  suchen_pro_tag: 8                 # max. Keyword-Suchanfragen pro Tag
-  max_llm_kosten_pro_tag_usd: 1.50  # harter Kostendeckel für LLM-Aufrufe
-  max_videos_pro_tag: 40            # max. Videos, die pro Tag analysiert werden
+  suchen_pro_tag: 30                # Themensuche ist Hauptquelle → mehr Suchen (30 × 100 = 3000 Quota)
+  max_llm_kosten_pro_tag_usd: 4.00  # angehoben: breiteres Netz = mehr Analysen
+  max_videos_pro_tag: 80            # max. Videos, die pro Tag analysiert werden
 
 # ---------------------------------------------------------------------------
 # Transkript-Beschaffung
