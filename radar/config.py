@@ -75,6 +75,11 @@ class TranskripteConfig(BaseModel):
     min_pause_s: float = 2.0
     max_pause_s: float = 4.0
     max_retries: int = 4
+    # Untertitel-Sprachen für yt-dlp — bewusst getrennt vom Vorfilter.
+    # Nur wenige Sprachen anfragen: jede zusätzliche Sprache verdoppelt die
+    # Abrufe und provoziert YouTube-Ratelimits (HTTP 429). Für überwiegend
+    # englische Kanäle reicht das Original ["en"].
+    sub_langs: list[str] = Field(default_factory=lambda: ["en"])
 
 
 class ClusteringConfig(BaseModel):

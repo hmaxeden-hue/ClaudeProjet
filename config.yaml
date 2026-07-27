@@ -105,6 +105,10 @@ transkripte:
   min_pause_s: 2.0          # minimale Pause zwischen yt-dlp-Requests
   max_pause_s: 4.0
   max_retries: 4            # exponentielles Backoff bei Fehlern
+  # Untertitel-Sprachen (getrennt vom Vorfilter). Nur wenige anfragen: jede
+  # zusätzliche Sprache verdoppelt die Abrufe und provoziert YouTube-429er.
+  # Für überwiegend englische Kanäle reicht das Original ["en"].
+  sub_langs: ["en"]
 
 # ---------------------------------------------------------------------------
 # Wiederholungserkennung / Clustering

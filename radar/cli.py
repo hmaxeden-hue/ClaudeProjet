@@ -57,7 +57,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
 
     cfg, conn = _init(args)
     try:
-        stats = run_fetch(conn, cfg, limit=args.limit)
+        stats = run_fetch(conn, cfg, limit=args.limit, retry_failed=args.retry_failed)
         _print_stats("fetch", stats)
         return 0
     finally:
@@ -226,6 +226,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     pf = sub.add_parser("fetch", help="Transkripte beschaffen")
     pf.add_argument("--limit", type=int, help="Max. Videos pro Lauf")
+    pf.add_argument("--retry-failed", action="store_true",
+                    help="Zuvor fehlgeschlagene Videos zurücksetzen und erneut versuchen")
     pf.set_defaults(fn=cmd_fetch)
 
     sub.add_parser("analyze", help="Videos per LLM analysieren").set_defaults(fn=cmd_analyze)

@@ -85,8 +85,20 @@ def _mit_backoff(fn, max_retries: int, video_id: str, conn: sqlite3.Connection):
     return None
 
 
-def run_fetch(conn: sqlite3.Connection, cfg: Config, *, limit: int | None = None) -> dict:
-    """Holt Transkripte für alle Videos mit Status 'entdeckt'."""
+def run_fetch(conn: sqlite3.Connection, cfg: Config, *, limit: int | None = None,
+              retry_failed: bool = False) -> dict:
+    """Holt Transkripte für alle Videos mit Status 'entdeckt'.
+
+    Mit retry_failed=True werden zuvor fehlgeschlagene Videos (Status 'fehler',
+    z.B. nach YouTube-Ratelimits) zurückgesetzt und erneut versucht.
+    """
+    if retry_failed:
+        n = conn.execute(
+            "UPDATE videos SET status = 'entdeckt', fehler = NULL WHERE status = 'fehler'"
+        ).rowcount
+        conn.commit()
+        if n:
+            log.info("%d fehlgeschlagene Videos für erneuten Versuch zurückgesetzt.", n)
     q = "SELECT video_id, titel FROM videos WHERE status = 'entdeckt' ORDER BY veroeffentlicht_am DESC"
     if limit:
         q += f" LIMIT {int(limit)}"
@@ -100,7 +112,7 @@ def run_fetch(conn: sqlite3.Connection, cfg: Config, *, limit: int | None = None
         stats["geprueft"] += 1
         try:
             res = _mit_backoff(
-                lambda: _hole_untertitel(vid, cfg.filter.sprachen),
+                lambda: _hole_untertitel(vid, cfg.transkripte.sub_langs),
                 cfg.transkripte.max_retries,
                 vid,
                 conn,
