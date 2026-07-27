@@ -16,14 +16,24 @@ profil:
 
 modelle:
   # Modell-IDs sind bewusst hier zentral – jederzeit austauschbar.
-  analyse: "claude-opus-4-8"          # ein Aufruf pro Video
+  # EMPFEHLUNG: analyse auf "claude-sonnet-5" (rund halbe Kosten pro Video bei
+  # sehr ähnlicher Substanzbewertung); report/clustering auf Opus lassen.
+  analyse: "claude-opus-4-8"          # ein Aufruf pro Video  ← Kandidat für claude-sonnet-5
   report: "claude-opus-4-8"           # finale Synthese
   clustering: "claude-opus-4-8"       # Themen-Cluster + Wiederholungsabgleich
-  # Preise pro 1M Tokens (USD) – für Kostentracking. Bei Modellwechsel anpassen.
+  # Preise pro 1M Tokens (USD) – für Kostentracking UND den Tagesdeckel.
+  # WICHTIG: Jedes genutzte Modell muss hier stehen, sonst wird es mit $0
+  # verbucht und der Kostendeckel greift nicht.
   preise:
     claude-opus-4-8:
       input_pro_1m: 5.00
       output_pro_1m: 25.00
+    claude-sonnet-5:
+      input_pro_1m: 3.00
+      output_pro_1m: 15.00
+    claude-haiku-4-5:
+      input_pro_1m: 1.00
+      output_pro_1m: 5.00
 
 # ---------------------------------------------------------------------------
 # Discovery-Quelle A: kuratiertes Kanal-Monitoring (Hauptquelle, quota-günstig)
