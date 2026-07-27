@@ -91,6 +91,19 @@ Oben ein Knopf **„Heute analysieren"** (startet die volle Kette im Hintergrund
 und zeigt den Fortschritt), darunter der aktuelle Bericht formatiert und eine
 Liste älterer Berichte zum Anklicken.
 
+**Vollautomatisch (empfohlen):** Als Hintergrunddienst einrichten — startet beim
+Login, läuft dauerhaft und startet die Analyse einmal pro Tag von selbst. Dann
+nur noch das Lesezeichen öffnen und den fertigen Bericht lesen:
+
+```bash
+./scripts/install-dashboard.sh          # Dienst einrichten (macOS launchd)
+#   → http://127.0.0.1:8756 als Lesezeichen speichern
+./scripts/install-dashboard.sh --uninstall
+```
+
+Zeitpunkt des automatischen Laufs in `config.yaml` unter `dashboard.auto_run_stunde`.
+Verpasste Läufe (Mac schlief) werden beim nächsten Wachsein nachgeholt.
+
 ### Täglicher Ablauf & Automatisierung
 
 Manuell die volle Kette (ohne Dashboard):

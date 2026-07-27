@@ -185,7 +185,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     conn = verbinde(cfg.db_pfad)
     migriere(conn, cfg.projekt_root / "migrations")
     conn.close()
-    run_dashboard(cfg, port=args.port)
+    run_dashboard(cfg, port=args.port, open_browser=not args.no_browser)
     return 0
 
 
@@ -254,7 +254,9 @@ def _build_parser() -> argparse.ArgumentParser:
     pr.set_defaults(fn=cmd_review)
 
     ps = sub.add_parser("serve", help="Lokales Dashboard im Browser starten")
-    ps.add_argument("--port", type=int, default=8756, help="Port (Default 8756)")
+    ps.add_argument("--port", type=int, default=None, help="Port (Default aus config.yaml)")
+    ps.add_argument("--no-browser", action="store_true",
+                    help="Browser nicht automatisch öffnen (für Hintergrunddienst)")
     ps.set_defaults(fn=cmd_serve)
     return p
 

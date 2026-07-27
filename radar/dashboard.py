@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -113,6 +114,38 @@ def _starte_lauf(cfg: Config) -> bool:
     return True
 
 
+def _heutiger_bericht_existiert(cfg: Config) -> bool:
+    return (cfg.reports_pfad / f"{heute_iso()}.md").exists()
+
+
+# merkt sich, an welchem Datum der Auto-Lauf zuletzt ausgelöst wurde
+_LETZTER_AUTO_TAG: str | None = None
+
+
+def _auto_scheduler(cfg: Config) -> None:
+    """Startet höchstens einmal pro Tag automatisch einen Lauf, sobald die
+    eingestellte Stunde erreicht ist und noch kein heutiger Bericht existiert.
+    Holt einen verpassten Lauf nach (z. B. wenn der Mac morgens noch schlief);
+    ein fehlgeschlagener Lauf wird am selben Tag nicht endlos wiederholt."""
+    global _LETZTER_AUTO_TAG
+    while True:
+        try:
+            heute = heute_iso()
+            if (
+                cfg.dashboard.auto_run
+                and datetime.now().hour >= cfg.dashboard.auto_run_stunde
+                and _LETZTER_AUTO_TAG != heute
+                and not _heutiger_bericht_existiert(cfg)
+                and _snapshot()["status"] != "running"
+            ):
+                _LETZTER_AUTO_TAG = heute
+                _log("Automatischer Tageslauf gestartet.")
+                _starte_lauf(cfg)
+        except Exception:  # noqa: BLE001 — Scheduler darf nie sterben
+            log.exception("Auto-Scheduler-Fehler")
+        time.sleep(300)  # alle 5 Minuten prüfen
+
+
 # --- Berichte lesen -------------------------------------------------------
 def _bericht_daten(cfg: Config) -> list[str]:
     d = cfg.reports_pfad
@@ -180,20 +213,34 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(404, b"not found", "text/plain")
 
 
-def run_dashboard(cfg: Config, *, host: str = "127.0.0.1", port: int = 8756) -> None:
+def run_dashboard(
+    cfg: Config,
+    *,
+    host: str = "127.0.0.1",
+    port: int | None = None,
+    open_browser: bool = True,
+) -> None:
+    port = port or cfg.dashboard.port
     _Handler.cfg = cfg
     server = ThreadingHTTPServer((host, port), _Handler)
     url = f"http://{host}:{port}"
     print("\n  AI-Business Radar — Dashboard läuft.")
     print(f"  Öffne im Browser:  {url}")
+    if cfg.dashboard.auto_run:
+        print(f"  Automatischer Tageslauf ab {cfg.dashboard.auto_run_stunde:02d}:00 Uhr.")
     print("  Beenden mit  Strg+C\n")
-    # Browser automatisch öffnen (macOS/Linux/Windows), Fehler ignorieren
-    try:
-        import webbrowser
 
-        webbrowser.open(url)
-    except Exception:  # noqa: BLE001
-        pass
+    # Automatischen Tageslauf im Hintergrund starten
+    threading.Thread(target=_auto_scheduler, args=(cfg,), daemon=True).start()
+
+    # Browser automatisch öffnen (nur interaktiv, nicht als Hintergrunddienst)
+    if open_browser:
+        try:
+            import webbrowser
+
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:

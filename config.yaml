@@ -144,6 +144,14 @@ retention:
   transkripte_tage: 30      # Transkripte älter als N Tage werden gelöscht
 
 # ---------------------------------------------------------------------------
+# Dashboard (lokale Seite, nur 127.0.0.1)
+# ---------------------------------------------------------------------------
+dashboard:
+  port: 8756
+  auto_run: true            # startet einmal pro Tag automatisch einen Lauf
+  auto_run_stunde: 7        # lokale Stunde (0-23), ab der der Tageslauf startet
+
+# ---------------------------------------------------------------------------
 # Pfade
 # ---------------------------------------------------------------------------
 pfade:

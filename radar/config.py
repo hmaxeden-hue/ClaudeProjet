@@ -116,6 +116,15 @@ class RetentionConfig(BaseModel):
     transkripte_tage: int = 30
 
 
+class DashboardConfig(BaseModel):
+    port: int = 8756
+    # Automatischer Tageslauf: Der Dashboard-Dienst startet die Analyse einmal
+    # pro Tag selbst, sobald die eingestellte Stunde erreicht ist. War der Mac
+    # zu dem Zeitpunkt aus/schlief, wird der Lauf beim nächsten Wachsein nachgeholt.
+    auto_run: bool = True
+    auto_run_stunde: int = 7      # lokale Stunde (0-23), ab der der Lauf startet
+
+
 class PfadeConfig(BaseModel):
     db: str = "data/radar.db"
     reports: str = "reports"
@@ -137,6 +146,7 @@ class Config(BaseModel):
     clustering: ClusteringConfig = Field(default_factory=ClusteringConfig)
     zustellung: ZustellungConfig = Field(default_factory=ZustellungConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
+    dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     pfade: PfadeConfig = Field(default_factory=PfadeConfig)
 
     # Nicht aus YAML, sondern beim Laden aus der Umgebung ergänzt:
