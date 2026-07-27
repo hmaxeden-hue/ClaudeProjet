@@ -73,9 +73,11 @@ def log_fehler(
     video_id: str | None = None,
 ) -> None:
     """Persistiert einen Fehler, damit ein Lauf nie ganz abbricht."""
+    from .logging_setup import redigiere
+
     conn.execute(
         "INSERT INTO run_errors (datum, stage, video_id, nachricht, erstellt_am) "
         "VALUES (?, ?, ?, ?, ?)",
-        (heute_iso(), stage, video_id, nachricht[:2000], jetzt_iso()),
+        (heute_iso(), stage, video_id, redigiere(nachricht)[:2000], jetzt_iso()),
     )
     conn.commit()

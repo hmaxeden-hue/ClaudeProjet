@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+# API-Keys tauchen in Fehlermeldungen (z.B. googleapiclient-URLs mit ?key=...)
+# auf. Vor jeder Ausgabe/Speicherung redigieren, damit keine Secrets in
+# Konsole, Logdatei oder DB landen.
+_SECRET_RE = re.compile(r"(?i)(key=|api[_-]?key=|token=)[A-Za-z0-9_\-\.]+")
+
+
+def redigiere(text: str) -> str:
+    return _SECRET_RE.sub(r"\1<redigiert>", text or "")
 
 
 class _JsonlFormatter(logging.Formatter):
@@ -23,6 +33,9 @@ class _JsonlFormatter(logging.Formatter):
         for k, v in record.__dict__.items():
             if k not in _STD_ATTRS and not k.startswith("_"):
                 eintrag[k] = v
+        eintrag["msg"] = redigiere(eintrag["msg"])
+        if "exc" in eintrag:
+            eintrag["exc"] = redigiere(eintrag["exc"])
         return json.dumps(eintrag, ensure_ascii=False)
 
 
@@ -45,7 +58,7 @@ class _KonsolenFormatter(logging.Formatter):
         zeit = datetime.now().strftime("%H:%M:%S")
         farbe = self.FARBEN.get(record.levelname, "") if sys.stderr.isatty() else ""
         reset = self.RESET if farbe else ""
-        return f"{farbe}{zeit} {record.levelname:7} {record.getMessage()}{reset}"
+        return f"{farbe}{zeit} {record.levelname:7} {redigiere(record.getMessage())}{reset}"
 
 
 def setup_logging(logs_dir: Path, *, level: int = logging.INFO) -> logging.Logger:
