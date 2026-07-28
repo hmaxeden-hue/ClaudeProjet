@@ -76,6 +76,9 @@ cat > "${PLIST}" <<PLIST_EOF
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <!-- Mindestabstand zwischen Neustarts: verhindert eine schnelle Absturzschleife -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
 
   <key>StandardOutPath</key>
   <string>${PROJECT_DIR}/logs/dashboard.out.log</string>

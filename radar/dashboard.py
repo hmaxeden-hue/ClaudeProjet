@@ -8,6 +8,7 @@ bibliothek plus ``markdown`` für die Berichtsdarstellung.
 
 from __future__ import annotations
 
+import errno
 import json
 import threading
 import time
@@ -222,7 +223,24 @@ def run_dashboard(
 ) -> None:
     port = port or cfg.dashboard.port
     _Handler.cfg = cfg
-    server = ThreadingHTTPServer((host, port), _Handler)
+
+    # Robust gegen Startüberschneidungen: Ist der Port beim Hochfahren (z. B.
+    # direkt nach einem Neustart) noch kurz belegt, warten und erneut versuchen,
+    # statt den Dienst abstürzen zu lassen.
+    server = None
+    for versuch in range(1, 21):
+        try:
+            server = ThreadingHTTPServer((host, port), _Handler)
+            break
+        except OSError as e:
+            if e.errno in (errno.EADDRINUSE, errno.EADDRNOTAVAIL, 48, 98, 99):
+                print(f"  Port {port} noch belegt, neuer Versuch in 3s ({versuch}/20) …")
+                time.sleep(3)
+                continue
+            raise
+    if server is None:
+        raise OSError(f"Port {port} blieb belegt — Dashboard konnte nicht starten.")
+
     url = f"http://{host}:{port}"
     print("\n  AI-Business Radar — Dashboard läuft.")
     print(f"  Öffne im Browser:  {url}")
