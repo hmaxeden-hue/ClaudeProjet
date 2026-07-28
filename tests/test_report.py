@@ -199,6 +199,32 @@ def test_cluster_leer_ohne_videos(tmp_path, cfg):
     assert ergebnis.topics == []
 
 
+def _near_miss(conn, vid, titel, score, grund):
+    conn.execute(
+        "INSERT INTO videos (video_id, kanal_name, titel, url, veroeffentlicht_am, "
+        "dauer_s, status, entdeckt_am) VALUES (?,?,?,?,?,?, 'verworfen', ?)",
+        (vid, "Kanal", titel, f"https://youtu.be/{vid}", "2026-07-28T08:00:00+00:00", 900, jetzt_iso()),
+    )
+    conn.execute(
+        "INSERT INTO analyses (video_id, json_payload, gesamtscore, verwerfen, verwerfen_grund, "
+        "modell, kosten_usd, erstellt_am) VALUES (?, '{}', ?, 1, ?, 'm', 0.01, ?)",
+        (vid, score, grund, jetzt_iso()),
+    )
+    conn.commit()
+
+
+def test_grenzfaelle_im_report(tmp_path, monkeypatch, cfg):
+    conn = _db(tmp_path)
+    # min_gesamtscore=6.0 → Boden 4.0; 5.2 ist ein Grenzfall, 2.0 nicht
+    _near_miss(conn, "nah", "Fast relevant", 5.2, "knapp: wenig eigene Zahlen")
+    _near_miss(conn, "weit", "Klarer Müll", 2.0, "reiner Clickbait")
+    stats = run_report(conn, cfg, dry_run=True)
+    md = Path(stats["pfad"]).read_text(encoding="utf-8")
+    assert "## Grenzfälle" in md
+    assert "Fast relevant" in md and "5.2" in md
+    assert "Klarer Müll" not in md            # zu niedrig → nicht als Grenzfall
+
+
 def test_baue_markdown_ohne_erkenntnisse():
     from radar.models import ReportInhalt
     k = {"gescannt": 5, "kanaele": 3, "relevant": 0, "aussortiert": 5,

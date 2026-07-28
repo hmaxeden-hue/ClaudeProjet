@@ -40,6 +40,7 @@ class VideoMeta:
     dauer_s: int = 0
     views: int | None = None
     sprache: str | None = None
+    beschreibung: str = ""
 
 
 class YouTubeClient:
@@ -126,6 +127,8 @@ class YouTubeClient:
                         views=int(st["viewCount"]) if "viewCount" in st else None,
                         sprache=sn.get("defaultAudioLanguage")
                         or sn.get("defaultLanguage"),
+                        # Beschreibung für die Vorsortierung, gekürzt (Token/Speicher sparen)
+                        beschreibung=(sn.get("description") or "")[:800],
                     )
                 )
         return out

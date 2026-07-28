@@ -55,7 +55,7 @@ def _sammle_kennzahlen(conn: sqlite3.Connection) -> dict:
         if r["verwerfen_grund"]:
             gruende[r["verwerfen_grund"]] += 1
     for r in conn.execute(
-        "SELECT filter_grund FROM videos WHERE status = 'vorgefiltert' "
+        "SELECT filter_grund FROM videos WHERE status IN ('vorgefiltert', 'triage_out') "
         "AND substr(entdeckt_am,1,10) = ?",
         (heute,),
     ):
@@ -103,6 +103,34 @@ def _behaltene_analysen(conn: sqlite3.Connection) -> dict[str, dict]:
     return out
 
 
+def _grenzfaelle(conn: sqlite3.Connection, cfg: Config, limit: int = 3) -> list[dict]:
+    """Beste 'Beinahe-Treffer' des Tages: analysiert, aber knapp unter dem
+    Schwellwert. Damit auch an mageren Tagen etwas Sichtbares im Bericht steht
+    und man erkennt, ob der Filter zu streng ist."""
+    heute = heute_iso()
+    boden = max(0.0, cfg.filter.min_gesamtscore - 2.0)
+    rows = conn.execute(
+        """
+        SELECT v.titel, v.url, v.kanal_name, v.dauer_s, a.gesamtscore,
+               a.verwerfen_grund, a.json_payload
+        FROM videos v JOIN analyses a ON a.video_id = v.video_id
+        WHERE v.status = 'verworfen' AND substr(a.erstellt_am,1,10) = ?
+          AND a.gesamtscore >= ? AND a.gesamtscore < ?
+        ORDER BY a.gesamtscore DESC LIMIT ?
+        """,
+        (heute, boden, cfg.filter.min_gesamtscore, limit),
+    ).fetchall()
+    out = []
+    for r in rows:
+        p = json.loads(r["json_payload"]) if r["json_payload"] else {}
+        out.append({
+            "titel": r["titel"], "url": r["url"], "kanal": r["kanal_name"],
+            "dauer_s": r["dauer_s"], "gesamtscore": r["gesamtscore"],
+            "warum": r["verwerfen_grund"] or p.get("kernaussage", ""),
+        })
+    return out
+
+
 def _format_analysen(analysen: dict[str, dict], cluster: ClusterErgebnis) -> str:
     # Update-Marker je Video aus dem Cluster-Ergebnis ableiten
     update_info: dict[str, str] = {}
@@ -133,7 +161,7 @@ def _quelle_link(a: dict) -> str:
 
 
 def _baue_markdown(datum: str, kennzahlen: dict, inhalt: ReportInhalt,
-                   analysen: dict[str, dict]) -> str:
+                   analysen: dict[str, dict], grenzfaelle: list[dict] | None = None) -> str:
     z = []
     z.append(f"# AI-Business Radar — {datum}\n")
     z.append(
@@ -172,6 +200,15 @@ def _baue_markdown(datum: str, kennzahlen: dict, inhalt: ReportInhalt,
         z.append("## Beobachtungsliste\n")
         for b in inhalt.beobachtungsliste:
             z.append(f"- {b}")
+        z.append("")
+
+    if grenzfaelle:
+        z.append("## Grenzfälle (knapp nicht relevant)\n")
+        z.append("*Diese kamen dem Schwellwert am nächsten — falls dir hier etwas "
+                 "fehlt, ist der Filter evtl. zu streng.*\n")
+        for g in grenzfaelle:
+            z.append(f"- **{g['titel']}** ({g['gesamtscore']:.1f}) — {g['warum']}")
+            z.append(f"  {_quelle_link(g)}")
         z.append("")
 
     z.append("## Aussortiert\n")
@@ -247,7 +284,8 @@ def run_report(
                 das_wichtigste=[a["kernaussage"] for a in list(analysen.values())[:5]],
             )
 
-    markdown = _baue_markdown(datum, kennzahlen, inhalt, analysen)
+    grenzfaelle = _grenzfaelle(conn, cfg)
+    markdown = _baue_markdown(datum, kennzahlen, inhalt, analysen, grenzfaelle)
 
     # Datei immer schreiben
     cfg.reports_pfad.mkdir(parents=True, exist_ok=True)

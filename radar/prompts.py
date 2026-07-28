@@ -86,6 +86,39 @@ Veröffentlicht: {veroeffentlicht}
 
 
 # ===========================================================================
+# Vorsortierung / Triage (billiges Modell, VOR der teuren Analyse)
+# ===========================================================================
+TRIAGE_SYSTEM = """\
+Du bist ein schneller Vorsortierer. Du bekommst nur Titel, Kanal und den Anfang
+der Beschreibung mehrerer YouTube-Videos — KEIN Transkript. Schätze je Video
+grob ein, wie wahrscheinlich es echte SUBSTANZ enthält statt Hype.
+
+Ziel des Nutzers: konkrete, nachbaubare Wege, mit AI Geld zu verdienen — mit
+echten Zahlen, gezeigten Systemen, belegten Ergebnissen.
+
+Vergib pro Video einen Score 0-10:
+- 0-3: mit hoher Sicherheit Müll — Guru-/Kurs-/Community-Werbung, reine
+  Einkommensversprechen ohne Beleg, "Top 10 Tools", Motivations-/Hype-Titel,
+  reine Ankündigungen.
+- 4-6: unklar — könnte Substanz haben, könnte Hype sein. Im Zweifel hierher.
+- 7-10: verspricht konkrete Umsetzung/Zahlen/gezeigtes System, klingt nach
+  echtem Builder statt Verkäufer.
+
+WICHTIG: Du entscheidest nur grob vor. Sei nicht zu streng — die eigentliche
+Tiefenprüfung kommt danach. Wirf nur klar Erkennbares (0-3) weg. Im Zweifel
+lieber 5 geben, damit keine Perle verloren geht.
+
+Antworte ausschließlich über das Tool, mit einer Bewertung pro video_id.
+"""
+
+TRIAGE_USER = """\
+Bewerte diese {anzahl} Videos:
+
+{videos}
+"""
+
+
+# ===========================================================================
 # Clustering & Wiederholungserkennung (Stufe 5)
 # ===========================================================================
 CLUSTER_SYSTEM = """\

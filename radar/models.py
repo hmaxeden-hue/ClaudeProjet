@@ -51,6 +51,16 @@ class ClusterErgebnis(BaseModel):
     topics: list[TopicZuordnung] = Field(default_factory=list)
 
 
+# --- Vorsortierung / Triage (Stufe vor der teuren Analyse) ---------------
+class TriageBewertung(BaseModel):
+    video_id: str
+    score: float = Field(ge=0, le=10, description="Vielversprechend-Score (0=Müll, 10=klar substanziell)")
+
+
+class TriageErgebnis(BaseModel):
+    bewertungen: list[TriageBewertung] = Field(default_factory=list)
+
+
 # --- Report-Synthese (Stufe 6) -------------------------------------------
 class Erkenntnis(BaseModel):
     thema: str

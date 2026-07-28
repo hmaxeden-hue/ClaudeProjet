@@ -52,6 +52,18 @@ def cmd_discover(args: argparse.Namespace) -> int:
         conn.close()
 
 
+def cmd_triage(args: argparse.Namespace) -> int:
+    from .triage import run_triage
+
+    cfg, conn = _init(args)
+    try:
+        stats = run_triage(conn, cfg)
+        _print_stats("triage", stats)
+        return 0
+    finally:
+        conn.close()
+
+
 def cmd_fetch(args: argparse.Namespace) -> int:
     from .transcripts import run_fetch
 
@@ -195,6 +207,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     log = get_logger()
     for schritt, fn in [
         ("discover", cmd_discover),
+        ("triage", cmd_triage),
         ("fetch", cmd_fetch),
         ("analyze", cmd_analyze),
         ("report", cmd_report),
@@ -236,6 +249,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("migrate", help="DB-Schema anlegen/aktualisieren").set_defaults(fn=cmd_migrate)
     sub.add_parser("discover", help="Neue Videos finden (Kanäle + Suche)").set_defaults(fn=cmd_discover)
+    sub.add_parser("triage", help="Günstige Vorsortierung (Titel/Beschreibung)").set_defaults(fn=cmd_triage)
 
     pf = sub.add_parser("fetch", help="Transkripte beschaffen")
     pf.add_argument("--limit", type=int, help="Max. Videos pro Lauf")

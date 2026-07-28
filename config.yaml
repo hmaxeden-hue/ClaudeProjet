@@ -76,22 +76,25 @@ kanaele:
 # Bewusst breit rund um "mit AI konkret Geld verdienen" — der Substanz-Filter in
 # der Analyse trennt echte Systeme mit Zahlen von Guru-/Kurs-Clickbait.
 keywords:
-  - "AI automation business real results"
-  - "how I make money with AI agents"
-  - "AI side income automation"
-  - "AI dropshipping automation system"
-  - "AI micro saas revenue breakdown"
-  - "n8n AI workflow business case study"
-  - "AI agent build revenue numbers"
-  - "AI e-commerce automation store"
-  - "solo founder AI product build"
-  - "AI service business how much I earn"
-  - "AI lead generation system automated"
-  - "AI content automation income"
-  - "faceless AI business real"
-  - "local-first AI app build"
-  - "AI freelance automation clients"
-  - "small business AI automation ROI"
+  # Schärfer Richtung ECHTE Builder/Case-Studies (dort sitzt Substanz + Geld),
+  # weg von "make money / secrets / laziest" (Guru-Köder). Die günstige
+  # Vorsortierung + die Analyse filtern den Rest.
+  - "I built AI automation revenue breakdown"
+  - "AI agent case study real numbers"
+  - "n8n AI workflow built walkthrough"
+  - "AI micro saas MRR breakdown"
+  - "how I automated my business with AI results"
+  - "AI dropshipping store real results numbers"
+  - "AI SaaS solo founder build log"
+  - "AI automation agency client results breakdown"
+  - "built AI tool cost per month"
+  - "AI e-commerce automation case study"
+  - "indie hacker AI product revenue"
+  - "AI lead generation system built results"
+  - "local-first AI app I built"
+  - "AI content system revenue proof"
+  - "claude code build business tool"
+  - "AI workflow saved hours real example"
 
 # ---------------------------------------------------------------------------
 # Vorfilter (billig, laufen VOR jedem LLM-Aufruf)
@@ -144,6 +147,15 @@ transkripte:
 # ---------------------------------------------------------------------------
 clustering:
   wiederholung_tage: 14     # Fenster, gegen das auf bereits Berichtetes geprüft wird
+
+# ---------------------------------------------------------------------------
+# Vorsortierung / Triage (billiges Modell, VOR der teuren Analyse)
+# ---------------------------------------------------------------------------
+triage:
+  aktiv: true
+  modell: "claude-haiku-4-5"   # günstiges Modell für den Titel-/Beschreibungs-Check
+  min_score: 4.0               # < min_score fliegt früh raus (0-3 = klarer Müll)
+  batch_groesse: 12            # Videos pro Aufruf (Kostenersparnis durch Bündelung)
 
 # ---------------------------------------------------------------------------
 # Zustellung

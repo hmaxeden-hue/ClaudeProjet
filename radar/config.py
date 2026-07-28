@@ -86,6 +86,15 @@ class ClusteringConfig(BaseModel):
     wiederholung_tage: int = 14
 
 
+class TriageConfig(BaseModel):
+    # Günstige Vorsortierung (Haiku) auf Titel+Beschreibung, BEVOR teure
+    # Transkript-Analyse läuft. Wirft offensichtlichen Müll früh und billig raus.
+    aktiv: bool = True
+    modell: str = "claude-haiku-4-5"
+    min_score: float = 4.0        # Videos mit Vielversprechend-Score < min_score fliegen raus
+    batch_groesse: int = 12       # Videos pro Haiku-Aufruf (Kostenersparnis durch Bündelung)
+
+
 class Preis(BaseModel):
     input_pro_1m: float
     output_pro_1m: float
@@ -144,6 +153,7 @@ class Config(BaseModel):
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     transkripte: TranskripteConfig = Field(default_factory=TranskripteConfig)
     clustering: ClusteringConfig = Field(default_factory=ClusteringConfig)
+    triage: TriageConfig = Field(default_factory=TriageConfig)
     zustellung: ZustellungConfig = Field(default_factory=ZustellungConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)

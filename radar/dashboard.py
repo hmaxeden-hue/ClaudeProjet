@@ -62,14 +62,21 @@ def _lauf(cfg: Config) -> None:
     from .report import run_report
     from .retention import run_retention
     from .transcripts import run_fetch
+    from .triage import run_triage
 
     conn = verbinde(cfg.db_pfad)
     migriere(conn, cfg.projekt_root / "migrations")
     try:
         _set(status="running", schritt="Suche neue Videos …", fehler=None, beendet=None)
-        _log("Suche neue Videos in deinen Kanälen …")
+        _log("Suche neue Videos zum Thema …")
         s = run_discover(conn, cfg, secret("YOUTUBE_API_KEY"))
         _log(f"{s['neu_kanal'] + s['neu_suche']} neue Videos, {s['vorgefiltert']} direkt aussortiert.")
+
+        _set(schritt="Vorsortierung …")
+        _log("Günstige Vorsortierung (Titel/Beschreibung) …")
+        s = run_triage(conn, cfg)
+        if s["geprueft"]:
+            _log(f"{s['behalten']} vielversprechend, {s['aussortiert']} früh aussortiert (${s['kosten_usd']:.4f}).")
 
         _set(schritt="Hole Transkripte …")
         _log("Hole Untertitel (mit Pausen, das dauert etwas) …")

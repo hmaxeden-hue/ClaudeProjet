@@ -88,8 +88,8 @@ def _speichere_video(
     conn.execute(
         "INSERT OR IGNORE INTO videos "
         "(video_id, channel_id, kanal_name, titel, url, veroeffentlicht_am, dauer_s, "
-        " views, sprache, status, filter_grund, quelle, entdeckt_am) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " views, sprache, beschreibung, status, filter_grund, quelle, entdeckt_am) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             meta.video_id,
             meta.channel_id,
@@ -100,6 +100,7 @@ def _speichere_video(
             meta.dauer_s,
             meta.views,
             meta.sprache,
+            meta.beschreibung,
             status,
             erg.grund or None,
             quelle,
