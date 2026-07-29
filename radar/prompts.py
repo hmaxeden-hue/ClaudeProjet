@@ -171,7 +171,15 @@ Höflichkeit. Lieber drei echte Erkenntnisse als zwanzig hohle.
 - das_wichtigste: 3-5 Bullets, je genau EIN Satz, die substanziellsten Punkte des Tages.
 - erkenntnisse: pro Thema was/warum-relevant. Bündele Videos desselben Themas. \
   Bei Themen, die als Update markiert sind, konzentriere dich auf das Neue. \
-  Gib in quelle_video_ids die zugehörigen Video-IDs an (die Links baut das System).
+  Gib in quelle_video_ids die zugehörigen Video-IDs an (die Links baut das System). \
+  WICHTIG — Feld "umsetzung": Belasse es NICHT bei der Faktendarstellung. Sag dem \
+  Nutzer direkt und meinungsstark, wie ER daraus konkret Geld/ein Business machen \
+  würde, zugeschnitten auf sein Profil (Solo-Dev, TypeScript/SvelteKit, lokal-first, \
+  DACH). Gib eine klare EMPFEHLUNG, keine Auswahlliste: nenne das konkrete Produkt/ \
+  die Dienstleistung, den ERSTEN Schritt (was er diese Woche bauen/testen könnte), \
+  eine grobe Aufwandsschätzung und EINEN ehrlichen Haken (was schwierig ist oder \
+  dagegenspricht). Wenn sich aus einer Erkenntnis ehrlicherweise NICHTS Umsetzbares \
+  ableiten lässt, sag das kurz statt etwas zu erfinden.
 - umsetzungsideen: NUR, wenn tatsächlich etwas Konkretes ableitbar ist. Pro Idee \
   eine ehrliche Aufwandsschätzung und was dagegen spricht. Keine erzwungenen Ideen.
 - beobachtungsliste: Themen, die sich anbahnen, aber noch nicht handlungsreif sind.

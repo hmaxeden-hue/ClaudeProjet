@@ -183,6 +183,8 @@ def _baue_markdown(datum: str, kennzahlen: dict, inhalt: ReportInhalt,
             z.append(f"### {e.thema}")
             z.append(f"- **Was:** {e.was}")
             z.append(f"- **Warum relevant:** {e.warum_relevant}")
+            if getattr(e, "umsetzung", ""):
+                z.append(f"- **💡 So machst du was draus:** {e.umsetzung}")
             for vid in e.quelle_video_ids:
                 if vid in analysen:
                     z.append(f"- **Quelle:** {_quelle_link(analysen[vid])}")

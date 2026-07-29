@@ -66,6 +66,12 @@ class Erkenntnis(BaseModel):
     thema: str
     was: str
     warum_relevant: str
+    umsetzung: str = Field(
+        default="",
+        description="Konkreter, meinungsstarker Vorschlag, wie der Nutzer daraus "
+        "ein Produkt/Business/Einkommen macht — inkl. erstem Schritt, grober "
+        "Aufwandsschätzung und einem ehrlichen Haken.",
+    )
     quelle_video_ids: list[str] = Field(default_factory=list)
 
 
