@@ -45,7 +45,16 @@ class VideoMeta:
 
 class YouTubeClient:
     def __init__(self, api_key: str):
-        self._svc = build("youtube", "v3", developerKey=api_key, cache_discovery=False)
+        # static_discovery=True nutzt das mit der Bibliothek gelieferte
+        # API-Beschreibungsdokument, statt es aus dem Netz zu laden. Das
+        # vermeidet den Fehler "UnknownApiNameOrVersion: name: youtube version: v3",
+        # der auftritt, wenn der Netz-Abruf des Discovery-Dokuments scheitert.
+        self._svc = build(
+            "youtube", "v3",
+            developerKey=api_key,
+            cache_discovery=False,
+            static_discovery=True,
+        )
 
     # --- Kanal-Auflösung -------------------------------------------------
     def resolve_channel(
