@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { Layout } from './components/Layout';
-import { WelcomeScreen } from './pages/WelcomeScreen';
+import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
 import { AreaDetail } from './pages/AreaDetail';
+import { Library } from './pages/Library';
+import { Achievements } from './pages/Achievements';
 
 export default function App() {
   const status = useAppStore((s) => s.status);
@@ -23,7 +25,7 @@ export default function App() {
   }
 
   if (status === 'setup') {
-    return <WelcomeScreen />;
+    return <Onboarding />;
   }
 
   return (
@@ -31,6 +33,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/area/:areaId" element={<AreaDetail />} />
+        <Route path="/library" element={<Library />} />
+        <Route path="/achievements" element={<Achievements />} />
       </Route>
     </Routes>
   );

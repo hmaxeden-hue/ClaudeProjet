@@ -33,10 +33,38 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 - Level-Up-Feedback: Vollbild-Overlay in Bereichsfarbe + „+X XP"-Toast bei jeder XP-Vergabe, auto-dismiss nach ~3 s.
 - Gesundheit: Seed-Inhalte bewusst auf Konsistenz und Wohlbefinden ausgerichtet (keine Gewichts-/Kalorienziele). Finanzen: Seed-Inhalte sind Tracking-Meilensteine, keine Anlageempfehlungen.
 
+## Phase 2
+
+### Onboarding-Fragebogen & generierter Start-Baum
+
+- Ablauf: Name → Bereichsauswahl → pro gewähltem Bereich eine Seite mit drei Fragen (Erfahrungsstand, Fokus-Tags als Mehrfachauswahl, optionales Freitext-Ziel).
+- **Bereiche sind abwählbar.** Die 5 Kernbereiche sind vorausgewählt, aber wer keine Finanzen tracken will, bekommt sie auch nicht – Individualisierung schlägt Vollständigkeit.
+- **Generator statt fixem Seed** (`src/data/onboarding.ts`): Jeder Bereich hat einen Pool von Knoten-Templates mit `stage` (0 = Grundlage … 3 = Meisterschaft) und optionalem `requiresTag`. Tag-gebundene Templates landen nur im Baum, wenn der passende Fokus gewählt wurde – dadurch bekommt jede Person einen anderen Baum. Templates sind rein deklarativ, damit Phase 3 sie später durch KI-generierte Knoten ersetzen kann, ohne die Generator-Logik anzufassen.
+- Prerequisites in Templates sind lokale Keys; beim Generieren werden echte ids vergeben und Verweise auf herausgefilterte Templates entfernt. So bleibt der Baum immer konsistent.
+- **Erfahrungsstand wird als bereits erledigter Fortschritt abgebildet:** Knoten unterhalb des angegebenen Stands starten `completed`, ihre XP zählen als Start-XP, und pro Bereich wird ein Log-Eintrag „Bestehender Fortschritt aus dem Onboarding" geschrieben. Wer sagt „ich trainiere regelmäßig", startet in Gesundheit also nicht bei Level 1. Alternative wäre gewesen, frühe Knoten wegzulassen – dann fehlt aber die sichtbare Historie im Baum.
+- Freitext-Ziele werden direkt als `Goal` mit 100 XP angelegt.
+
+### Achievements / Badges
+
+- 21 Abzeichen in drei Stufen (Bronze/Silber/Gold), definiert als reine Prädikate über einen `AchievementContext` (`src/lib/achievements.ts`). Keine Persistenz der Bedingungen – nur `{ id, unlockedAt }` wird gespeichert, alles andere wird zur Laufzeit ausgewertet. Neue Abzeichen lassen sich so ergänzen und greifen rückwirkend.
+- Auswertung läuft nach jeder Mutation über den ganzen State (21 Prädikate über In-Memory-Arrays, vernachlässigbar). Kein inkrementelles Tracking – das wäre fehleranfällig ohne messbaren Gewinn.
+- Gesperrte Abzeichen zeigen einen Fortschrittsbalken (`progress()`), damit sie motivieren statt nur zu verstecken.
+- Freischalt-Feedback als Toast (oben rechts am Desktop, oben mittig am Handy), Warteschlange bei mehreren gleichzeitigen Unlocks.
+
+### Ressourcen-Bibliothek
+
+- Eigener Screen `/library` mit allen Ressourcen bereichsübergreifend, plus Filter nach Bereich/Typ/Status und Titelsuche.
+- Ressourcen-Formular und -Zeile wurden in gemeinsame Komponenten extrahiert (`ResourceFormModal`, `ResourceRow`), die Bereichs-Tab und Bibliothek teilen. Im Bibliotheks-Kontext kommt eine Bereichsauswahl dazu.
+- Navigation: Kopfzeile am Desktop, feste Tab-Leiste unten am Handy.
+
+### Datenbank-Migration
+
+- Dexie `version(2)` ergänzt nur die Tabelle `achievements`; bestehende Tabellen bleiben unangetastet, vorhandene Spielstände laufen ohne Datenverlust weiter.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.
 - Log-Einträge löschen entfernt die XP **nicht** rückwirkend (Logs sind Journal, keine Buchhaltung). Store-API `deleteLog` existiert, ist aber bewusst nicht prominent in der UI.
-- Keine Tests im MVP; die Logik-Kerne (`lib/xp.ts`, `lib/tree.ts`, `lib/streak.ts`) sind als reine Funktionen geschnitten, damit Tests in Phase 2 leicht nachrüstbar sind.
-- Phase 2: Onboarding-Fragebogen, Achievements/Badges, Ressourcen-Bibliothek übergreifend, Streak-Belohnungen.
+- Noch keine automatisierten Tests; die Logik-Kerne (`lib/xp.ts`, `lib/tree.ts`, `lib/streak.ts`, `lib/achievements.ts`, `data/onboarding.ts`) sind als reine Funktionen geschnitten, damit Tests leicht nachrüstbar sind. Verifiziert wurde bisher über Browser-Durchläufe.
+- Das Onboarding lässt sich nach dem Abschluss nicht erneut starten – der Baum wird stattdessen manuell weiter bearbeitet. Ein „Baum zurücksetzen" wäre ein eigenes Feature.
 - Phase 3: KI-Vorschläge (Anthropic API), Accounts + Sync – Repository-Interface ist dafür vorbereitet.

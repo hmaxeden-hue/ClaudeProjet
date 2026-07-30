@@ -1,4 +1,5 @@
 import type {
+  AchievementUnlock,
   AppData,
   Area,
   Goal,
@@ -36,27 +37,45 @@ export interface LifeRpgRepository {
 
   saveResource(resource: Resource): Promise<void>;
   deleteResource(resourceId: string): Promise<void>;
+
+  addAchievements(unlocks: AchievementUnlock[]): Promise<void>;
 }
 
 class DexieRepository implements LifeRpgRepository {
   async loadAll(): Promise<AppData> {
-    const [profiles, areas, nodes, logs, goals, resources] = await Promise.all(
-      [
+    const [profiles, areas, nodes, logs, goals, resources, achievements] =
+      await Promise.all([
         db.profiles.toArray(),
         db.areas.orderBy('sortOrder').toArray(),
         db.nodes.toArray(),
         db.logs.toArray(),
         db.goals.toArray(),
         db.resources.toArray(),
-      ],
-    );
-    return { profile: profiles[0] ?? null, areas, nodes, logs, goals, resources };
+        db.achievements.toArray(),
+      ]);
+    return {
+      profile: profiles[0] ?? null,
+      areas,
+      nodes,
+      logs,
+      goals,
+      resources,
+      achievements,
+    };
   }
 
   async seed(data: AppData): Promise<void> {
     await db.transaction(
       'rw',
-      [db.profiles, db.areas, db.nodes, db.logs, db.goals, db.resources],
+      [
+        db.profiles,
+        db.areas,
+        db.nodes,
+        db.logs,
+        db.goals,
+        db.resources,
+        db.achievements,
+      ],
       async () => {
         if (data.profile) await db.profiles.put(data.profile);
         await db.areas.bulkPut(data.areas);
@@ -64,6 +83,7 @@ class DexieRepository implements LifeRpgRepository {
         await db.logs.bulkPut(data.logs);
         await db.goals.bulkPut(data.goals);
         await db.resources.bulkPut(data.resources);
+        await db.achievements.bulkPut(data.achievements);
       },
     );
   }
@@ -124,6 +144,10 @@ class DexieRepository implements LifeRpgRepository {
 
   async deleteResource(resourceId: string): Promise<void> {
     await db.resources.delete(resourceId);
+  }
+
+  async addAchievements(unlocks: AchievementUnlock[]): Promise<void> {
+    await db.achievements.bulkPut(unlocks);
   }
 }
 

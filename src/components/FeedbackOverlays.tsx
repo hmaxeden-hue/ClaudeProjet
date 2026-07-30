@@ -1,9 +1,25 @@
+import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { ACHIEVEMENTS_BY_ID } from '../lib/achievements';
 
-/** Floating "+X XP" toast and the full-screen level-up celebration. */
+/** Floating "+X XP" toast, level-up celebration and achievement unlocks. */
 export function FeedbackOverlays() {
   const xpToast = useAppStore((s) => s.xpToast);
   const levelUp = useAppStore((s) => s.levelUp);
+  const pendingAchievements = useAppStore((s) => s.pendingAchievements);
+  const dismissAchievement = useAppStore((s) => s.dismissAchievement);
+
+  const currentAchievementId = pendingAchievements[0];
+  const achievement = currentAchievementId
+    ? ACHIEVEMENTS_BY_ID.get(currentAchievementId)
+    : undefined;
+
+  // Show unlocked badges one after another.
+  useEffect(() => {
+    if (!currentAchievementId) return;
+    const timer = window.setTimeout(dismissAchievement, 4000);
+    return () => window.clearTimeout(timer);
+  }, [currentAchievementId, dismissAchievement]);
 
   return (
     <>
@@ -51,6 +67,32 @@ export function FeedbackOverlays() {
               <span className="font-bold">Level {levelUp.level}</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {achievement && (
+        <div
+          key={achievement.id}
+          className="fixed left-1/2 top-20 z-50 max-w-[calc(100vw-2rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0"
+        >
+          <button
+            onClick={dismissAchievement}
+            className="animate-badge-drop w-full rounded-2xl border border-amber-400/60 bg-slate-950/95 px-6 py-4 shadow-2xl"
+            style={{ boxShadow: '0 0 40px rgba(251, 191, 36, 0.35)' }}
+          >
+            <div className="text-xs font-bold uppercase tracking-widest text-amber-400">
+              Abzeichen freigeschaltet
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-4xl">{achievement.icon}</span>
+              <div className="text-left">
+                <div className="font-bold text-white">{achievement.title}</div>
+                <div className="text-xs text-slate-400">
+                  {achievement.description}
+                </div>
+              </div>
+            </div>
+          </button>
         </div>
       )}
     </>
