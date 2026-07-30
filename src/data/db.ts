@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type {
+  AchievementUnlock,
   Area,
   Goal,
   LogEntry,
@@ -16,6 +17,7 @@ export class LifeRpgDatabase extends Dexie {
   logs!: Table<LogEntry, string>;
   goals!: Table<Goal, string>;
   resources!: Table<Resource, string>;
+  achievements!: Table<AchievementUnlock, string>;
 
   constructor() {
     super('life-rpg');
@@ -26,6 +28,10 @@ export class LifeRpgDatabase extends Dexie {
       logs: 'id, areaId, timestamp',
       goals: 'id, areaId',
       resources: 'id, areaId',
+    });
+    // v2 adds badges; existing tables are carried over unchanged.
+    this.version(2).stores({
+      achievements: 'id',
     });
   }
 }

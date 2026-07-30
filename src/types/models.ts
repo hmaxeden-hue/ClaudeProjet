@@ -81,6 +81,13 @@ export interface Resource {
   status: ResourceStatus;
 }
 
+/** A badge the user has earned. Definitions live in lib/achievements.ts. */
+export interface AchievementUnlock {
+  /** Matches the id of an AchievementDefinition. */
+  id: string;
+  unlockedAt: string;
+}
+
 /** Everything the app persists, loaded in one go at startup. */
 export interface AppData {
   profile: Profile | null;
@@ -89,4 +96,5 @@ export interface AppData {
   logs: LogEntry[];
   goals: Goal[];
   resources: Resource[];
+  achievements: AchievementUnlock[];
 }

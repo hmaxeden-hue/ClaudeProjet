@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { levelFromXp } from '../lib/xp';
 import { nextStepForArea } from '../lib/tree';
 import { currentStreak } from '../lib/streak';
+import { ACHIEVEMENTS, ACHIEVEMENTS_BY_ID } from '../lib/achievements';
 import { XPBar } from '../components/XPBar';
 import { AreaFormModal } from '../components/AreaFormModal';
 import { ActivityFormModal } from '../components/ActivityFormModal';
@@ -13,6 +14,7 @@ export function Dashboard() {
   const areas = useAppStore((s) => s.areas);
   const nodes = useAppStore((s) => s.nodes);
   const logs = useAppStore((s) => s.logs);
+  const unlocks = useAppStore((s) => s.achievements);
 
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -21,6 +23,9 @@ export function Dashboard() {
   const totalXp = areas.reduce((sum, a) => sum + a.xp, 0);
   const streak = currentStreak(logs);
   const completedNodes = nodes.filter((n) => n.status === 'completed').length;
+  const recentUnlocks = [...unlocks]
+    .sort((a, b) => b.unlockedAt.localeCompare(a.unlockedAt))
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -125,6 +130,44 @@ export function Dashboard() {
             );
           })}
         </div>
+      </section>
+
+      {/* Badges */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Abzeichen</h2>
+          <Link
+            to="/achievements"
+            className="text-sm text-slate-400 transition hover:text-white"
+          >
+            alle ansehen ({unlocks.length}/{ACHIEVEMENTS.length}) →
+          </Link>
+        </div>
+        {recentUnlocks.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-800 p-4 text-center text-sm text-slate-500">
+            Noch keine Abzeichen – protokolliere deine erste Aktivität!
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {recentUnlocks.map((unlock) => {
+              const badge = ACHIEVEMENTS_BY_ID.get(unlock.id);
+              if (!badge) return null;
+              return (
+                <Link
+                  key={unlock.id}
+                  to="/achievements"
+                  title={badge.description}
+                  className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-sm transition hover:border-amber-400/60"
+                >
+                  <span className="text-xl">{badge.icon}</span>
+                  <span className="font-medium text-slate-200">
+                    {badge.title}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Recent activity */}

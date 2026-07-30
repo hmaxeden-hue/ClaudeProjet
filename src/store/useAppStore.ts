@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  AchievementUnlock,
   Area,
   Goal,
   LogEntry,
@@ -8,10 +9,15 @@ import type {
   SkillNode,
 } from '../types/models';
 import { repository } from '../data/repository';
-import { buildSeedData } from '../data/seed';
+import {
+  generateSetup,
+  type OnboardingAnswers,
+} from '../data/onboarding';
 import { createId } from '../lib/id';
 import { levelFromXp } from '../lib/xp';
 import { recomputeNodeStatuses } from '../lib/tree';
+import { currentStreak } from '../lib/streak';
+import { findNewlyUnlocked } from '../lib/achievements';
 
 export type AppStatus = 'loading' | 'setup' | 'ready';
 
@@ -47,11 +53,18 @@ interface AppState {
   logs: LogEntry[];
   goals: Goal[];
   resources: Resource[];
+  achievements: AchievementUnlock[];
   xpToast: XpToast | null;
   levelUp: LevelUpEvent | null;
+  /** Achievement ids waiting to be celebrated, oldest first. */
+  pendingAchievements: string[];
 
   init: () => Promise<void>;
-  createProfile: (name: string) => Promise<void>;
+  completeOnboarding: (input: {
+    name: string;
+    selectedAreaIds: string[];
+    answers: OnboardingAnswers;
+  }) => Promise<void>;
 
   logActivity: (input: {
     areaId: string;
@@ -80,11 +93,41 @@ interface AppState {
     status: Resource['status'],
   ) => Promise<void>;
   deleteResource: (resourceId: string) => Promise<void>;
+
+  dismissAchievement: () => void;
 }
 
 let feedbackCounter = 0;
 
 export const useAppStore = create<AppState>((set, get) => {
+  /**
+   * Evaluates all badge conditions against the current state and records
+   * the ones that just became true. Cheap enough to run after every change.
+   */
+  async function checkAchievements(): Promise<void> {
+    const { areas, nodes, logs, goals, resources, achievements } = get();
+    const alreadyUnlocked = new Set(achievements.map((a) => a.id));
+    const newly = findNewlyUnlocked(
+      { areas, nodes, logs, goals, resources, streak: currentStreak(logs) },
+      alreadyUnlocked,
+    );
+    if (newly.length === 0) return;
+
+    const now = new Date().toISOString();
+    const records: AchievementUnlock[] = newly.map((a) => ({
+      id: a.id,
+      unlockedAt: now,
+    }));
+    set((state) => ({
+      achievements: [...state.achievements, ...records],
+      pendingAchievements: [
+        ...state.pendingAchievements,
+        ...newly.map((a) => a.id),
+      ],
+    }));
+    await repository.addAchievements(records);
+  }
+
   /**
    * Adds XP to an area, writes a log entry, persists both and triggers
    * the XP toast / level-up feedback. Central path for every XP source.
@@ -150,8 +193,10 @@ export const useAppStore = create<AppState>((set, get) => {
     logs: [],
     goals: [],
     resources: [],
+    achievements: [],
     xpToast: null,
     levelUp: null,
+    pendingAchievements: [],
 
     init: async () => {
       const data = await repository.loadAll();
@@ -163,34 +208,41 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ ...data, status: 'ready' });
     },
 
-    createProfile: async (name: string) => {
+    completeOnboarding: async ({ name, selectedAreaIds, answers }) => {
       const profile: Profile = {
         id: 'profile',
         name: name.trim() || 'Held:in',
         createdAt: new Date().toISOString(),
       };
-      const { areas, nodes } = buildSeedData();
+      const { areas, nodes, goals, logs } = generateSetup(
+        selectedAreaIds,
+        answers,
+      );
       await repository.seed({
         profile,
         areas,
         nodes,
-        logs: [],
-        goals: [],
+        logs,
+        goals,
         resources: [],
+        achievements: [],
       });
       set({
         profile,
         areas,
         nodes,
-        logs: [],
-        goals: [],
+        logs,
+        goals,
         resources: [],
+        achievements: [],
         status: 'ready',
       });
+      await checkAchievements();
     },
 
     logActivity: async (input) => {
       await gainXp(input);
+      await checkAchievements();
     },
 
     deleteLog: async (logId) => {
@@ -219,6 +271,7 @@ export const useAppStore = create<AppState>((set, get) => {
         description: `Skill abgeschlossen: ${node.title}`,
         xp: node.xpReward,
       });
+      await checkAchievements();
     },
 
     saveNode: async (input) => {
@@ -262,6 +315,7 @@ export const useAppStore = create<AppState>((set, get) => {
         return { areas };
       });
       await repository.saveArea(area);
+      await checkAchievements();
     },
 
     deleteArea: async (areaId) => {
@@ -304,6 +358,7 @@ export const useAppStore = create<AppState>((set, get) => {
         description: `Ziel erreicht: ${goal.title}`,
         xp: goal.xpReward,
       });
+      await checkAchievements();
     },
 
     deleteGoal: async (goalId) => {
@@ -321,6 +376,7 @@ export const useAppStore = create<AppState>((set, get) => {
         };
       });
       await repository.saveResource(resource);
+      await checkAchievements();
     },
 
     setResourceStatus: async (resourceId, status) => {
@@ -343,6 +399,7 @@ export const useAppStore = create<AppState>((set, get) => {
           xp: RESOURCE_XP[resource.type],
         });
       }
+      await checkAchievements();
     },
 
     deleteResource: async (resourceId) => {
@@ -350,6 +407,12 @@ export const useAppStore = create<AppState>((set, get) => {
         resources: state.resources.filter((r) => r.id !== resourceId),
       }));
       await repository.deleteResource(resourceId);
+    },
+
+    dismissAchievement: () => {
+      set((state) => ({
+        pendingAchievements: state.pendingAchievements.slice(1),
+      }));
     },
   };
 });
