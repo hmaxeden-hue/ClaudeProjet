@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { isCloudConfigured } from '../lib/supabase';
 import { levelFromXp } from '../lib/xp';
 import { FeedbackOverlays } from './FeedbackOverlays';
+import { AuthModal } from './AuthModal';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '🏠' },
@@ -12,6 +16,11 @@ const NAV_ITEMS = [
 export function Layout() {
   const profile = useAppStore((s) => s.profile);
   const areas = useAppStore((s) => s.areas);
+  const authStatus = useAuthStore((s) => s.status);
+  const email = useAuthStore((s) => s.email);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  const [showAuth, setShowAuth] = useState(false);
 
   const totalXp = areas.reduce((sum, a) => sum + a.xp, 0);
   const characterLevel = areas.reduce((sum, a) => sum + levelFromXp(a.xp), 0);
@@ -55,6 +64,23 @@ export function Layout() {
             <span className="hidden rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-slate-300 md:inline">
               {totalXp.toLocaleString('de-DE')} XP
             </span>
+            {isCloudConfigured &&
+              (authStatus === 'signed_in' ? (
+                <button
+                  onClick={() => void signOut()}
+                  title={email ?? undefined}
+                  className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-300 transition hover:border-emerald-400"
+                >
+                  ☁️ <span className="hidden sm:inline">Abmelden</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAuth(true)}
+                  className="rounded-full border border-slate-700 px-3 py-1 text-slate-300 transition hover:border-slate-500 hover:text-white"
+                >
+                  Anmelden
+                </button>
+              ))}
           </div>
         </div>
       </header>
@@ -81,6 +107,7 @@ export function Layout() {
         ))}
       </nav>
 
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
       <FeedbackOverlays />
     </div>
   );

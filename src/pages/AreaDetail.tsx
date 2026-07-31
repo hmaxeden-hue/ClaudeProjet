@@ -12,6 +12,8 @@ import { ActivityFormModal } from '../components/ActivityFormModal';
 import { GoalsTab } from '../components/GoalsTab';
 import { ResourcesTab } from '../components/ResourcesTab';
 import { LogTab } from '../components/LogTab';
+import { SuggestionsModal } from '../components/SuggestionsModal';
+import { useAuthStore } from '../store/useAuthStore';
 import type { SkillNode } from '../types/models';
 
 type Tab = 'tree' | 'goals' | 'resources' | 'log';
@@ -37,6 +39,8 @@ export function AreaDetail() {
   const [showNodeForm, setShowNodeForm] = useState(false);
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const isSignedIn = useAuthStore((s) => s.status) === 'signed_in';
 
   const area = areas.find((a) => a.id === areaId);
   const areaNodes = useMemo(
@@ -174,7 +178,20 @@ export function AreaDetail() {
 
       {tab === 'tree' && (
         <div className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {isSignedIn && (
+              <button
+                onClick={() => setShowSuggestions(true)}
+                className="rounded-lg border px-3 py-1.5 text-sm transition hover:brightness-125"
+                style={{
+                  borderColor: `${area.color}55`,
+                  backgroundColor: `${area.color}12`,
+                  color: area.color,
+                }}
+              >
+                ✨ KI-Vorschläge
+              </button>
+            )}
             <button
               onClick={() => {
                 setEditingNode(null);
@@ -230,6 +247,12 @@ export function AreaDetail() {
         <ActivityFormModal
           initialAreaId={area.id}
           onClose={() => setShowActivityForm(false)}
+        />
+      )}
+      {showSuggestions && (
+        <SuggestionsModal
+          area={area}
+          onClose={() => setShowSuggestions(false)}
         />
       )}
     </div>
