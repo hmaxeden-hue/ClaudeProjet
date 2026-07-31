@@ -84,7 +84,10 @@ Deno.serve(async (req: Request) => {
 
   if (!ANTHROPIC_API_KEY) {
     return json(
-      { error: 'Auf dem Server ist kein Anthropic-API-Schlüssel hinterlegt.' },
+      {
+        error:
+          'Auf dem Server ist kein Anthropic-Schlüssel hinterlegt. Lege in Supabase unter Edge Functions → Secrets ein Secret namens ANTHROPIC_API_KEY an.',
+      },
       500,
     );
   }
@@ -143,8 +146,21 @@ Deno.serve(async (req: Request) => {
     if (!response.ok) {
       const detail = await response.text();
       console.error('Anthropic API error', response.status, detail);
+      // Surface the API's own reason (e.g. invalid key, no credit) – it makes
+      // the difference between a five-second fix and guesswork. Contains no
+      // secrets, only the error description.
+      let reason = '';
+      try {
+        reason = JSON.parse(detail)?.error?.message ?? '';
+      } catch {
+        reason = detail.slice(0, 200);
+      }
       return json(
-        { error: 'Die KI-Anfrage ist fehlgeschlagen. Versuch es später noch einmal.' },
+        {
+          error: `Die Anthropic-API hat mit Status ${response.status} geantwortet${
+            reason ? `: ${reason}` : ''
+          }`,
+        },
         502,
       );
     }
