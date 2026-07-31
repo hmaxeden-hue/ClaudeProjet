@@ -61,6 +61,20 @@ dem Server** liegt und nie im Browser landet.
    von [`supabase/functions/suggest-nodes/index.ts`](./supabase/functions/suggest-nodes/index.ts)
    einfügen. Dann auf **Deploy**.
 
+3. **„Verify JWT" ausschalten:** Bei der Funktion auf **Settings** (bzw. das
+   Zahnrad neben `suggest-nodes`) und den Schalter **Verify JWT with legacy
+   secret** / **Enforce JWT Verification** auf **aus** stellen.
+
+   Das klingt nach einem Sicherheitsloch, ist aber keins: Die Prüfung des
+   Gateways lehnt auch die Vorab-Anfrage ab, die jeder Browser aus
+   Sicherheitsgründen vorher schickt (sie trägt per Definition noch keinen
+   Anmelde-Token). Die Anfrage würde die Funktion also nie erreichen. Stattdessen
+   prüft die Funktion den Token **selbst** — wer nicht angemeldet ist, bekommt
+   weiterhin nur ein `401` zurück und erreicht die Anthropic-API nicht.
+
+> **Wichtig:** Ein neu angelegtes oder geändertes Secret wirkt erst, nachdem die
+> Funktion **einmal neu veröffentlicht** wurde.
+
 Danach erscheint im Skill-Tree jedes Bereichs der Knopf **✨ KI-Vorschläge**
 (sichtbar, sobald du angemeldet bist).
 

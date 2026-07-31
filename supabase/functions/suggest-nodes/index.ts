@@ -2,12 +2,35 @@
  * Supabase Edge Function: personalized skill suggestions.
  *
  * The Anthropic API key lives only in this function's environment, never in
- * the browser. Supabase verifies the caller's JWT before this code runs, so
- * only signed-in users can reach it.
+ * the browser.
+ *
+ * Authentication is checked *here* rather than by the gateway's "Verify JWT"
+ * setting. That setting also rejects the browser's CORS preflight, which
+ * carries no Authorization header by design — the request would then fail
+ * before this code ever runs. Deploy this function with Verify JWT turned off;
+ * the check below keeps it just as closed to anonymous callers.
  */
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+// Injected automatically by Supabase into every edge function.
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const MODEL = 'claude-opus-5';
+
+/** Resolves the caller's token against Supabase Auth. */
+async function isAuthenticated(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+
+  try {
+    const result = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: authHeader, apikey: SUPABASE_ANON_KEY },
+    });
+    return result.ok;
+  } catch {
+    return false;
+  }
+}
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -81,6 +104,13 @@ Deno.serve(async (req: Request) => {
       status,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
+
+  if (!(await isAuthenticated(req))) {
+    return json(
+      { error: 'Nicht angemeldet. Melde dich ab und wieder an, dann probier es erneut.' },
+      401,
+    );
+  }
 
   if (!ANTHROPIC_API_KEY) {
     return json(
