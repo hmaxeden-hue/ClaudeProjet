@@ -1,0 +1,8 @@
+# Supabase project config (used by the CLI; the dashboard has the same toggles).
+
+[functions.suggest-nodes]
+# The gateway's JWT check also rejects the browser's CORS preflight, which
+# carries no Authorization header — the call would fail before the function
+# runs. The function verifies the caller's token itself instead, so anonymous
+# callers are still turned away.
+verify_jwt = false
