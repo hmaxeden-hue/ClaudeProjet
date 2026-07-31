@@ -18,6 +18,50 @@ export interface SuggestionRequest {
 }
 
 /**
+ * supabase-js collapses every non-2xx response into a generic error and hides
+ * the body, so the useful message our function sent has to be read back off
+ * the attached Response.
+ */
+async function describeInvokeError(error: unknown): Promise<string> {
+  const response = (error as { context?: unknown }).context;
+
+  if (response instanceof Response) {
+    let body: unknown = null;
+    try {
+      body = await response.clone().json();
+    } catch {
+      try {
+        body = await response.clone().text();
+      } catch {
+        body = null;
+      }
+    }
+
+    const detail =
+      typeof body === 'string'
+        ? body
+        : ((body as { error?: string } | null)?.error ?? '');
+
+    if (response.status === 404) {
+      return 'Die Serverfunktion "suggest-nodes" wurde nicht gefunden. Prüfe in Supabase unter Edge Functions, ob sie genau so heißt und veröffentlicht ist.';
+    }
+    if (response.status === 401 || response.status === 403) {
+      return 'Der Server hat die Anfrage abgelehnt. Melde dich einmal ab und wieder an.';
+    }
+    if (detail) {
+      return `${detail} (Status ${response.status})`;
+    }
+    return `Die Serverfunktion hat mit Status ${response.status} geantwortet. Details stehen in Supabase unter Edge Functions → suggest-nodes → Logs.`;
+  }
+
+  const message = (error as Error)?.message ?? '';
+  if (message.toLowerCase().includes('failed to fetch')) {
+    return 'Der Server ist nicht erreichbar. Prüfe deine Internetverbindung.';
+  }
+  return message || 'Unbekannter Fehler beim Aufruf der Serverfunktion.';
+}
+
+/**
  * Asks the backend for skill suggestions. The Anthropic key stays on the
  * server – the browser only ever talks to our own edge function.
  */
@@ -32,11 +76,7 @@ export async function fetchNodeSuggestions(
     body: input,
   });
 
-  if (error) {
-    throw new Error(
-      'Die Vorschläge konnten nicht geladen werden. Bist du angemeldet und online?',
-    );
-  }
+  if (error) throw new Error(await describeInvokeError(error));
   if (data?.error) throw new Error(data.error);
 
   return (data?.suggestions ?? []) as NodeSuggestion[];
