@@ -151,4 +151,38 @@ class DexieRepository implements LifeRpgRepository {
   }
 }
 
-export const repository: LifeRpgRepository = new DexieRepository();
+/** The local, offline-capable backend. Always available. */
+export const localRepository: LifeRpgRepository = new DexieRepository();
+
+/**
+ * The backend the app currently talks to. Swapped to the cloud implementation
+ * on sign-in and back to local on sign-out; `repository` below delegates to it,
+ * so no caller has to know which one is active.
+ */
+let active: LifeRpgRepository = localRepository;
+
+export function setActiveRepository(next: LifeRpgRepository): void {
+  active = next;
+}
+
+export function useLocalRepository(): void {
+  active = localRepository;
+}
+
+export const repository: LifeRpgRepository = {
+  loadAll: () => active.loadAll(),
+  seed: (data) => active.seed(data),
+  saveProfile: (profile) => active.saveProfile(profile),
+  saveArea: (area) => active.saveArea(area),
+  deleteArea: (areaId) => active.deleteArea(areaId),
+  saveNode: (node) => active.saveNode(node),
+  saveNodes: (nodes) => active.saveNodes(nodes),
+  deleteNode: (nodeId) => active.deleteNode(nodeId),
+  addLog: (entry) => active.addLog(entry),
+  deleteLog: (logId) => active.deleteLog(logId),
+  saveGoal: (goal) => active.saveGoal(goal),
+  deleteGoal: (goalId) => active.deleteGoal(goalId),
+  saveResource: (resource) => active.saveResource(resource),
+  deleteResource: (resourceId) => active.deleteResource(resourceId),
+  addAchievements: (unlocks) => active.addAchievements(unlocks),
+};

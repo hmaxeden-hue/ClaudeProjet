@@ -5,6 +5,8 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 
 ## Features
 
+- **Konten & Cloud-Sync** (optional): angemeldet teilen Handy und Desktop denselben Spielstand; ohne Konto läuft alles rein lokal weiter
+- **KI-Vorschläge** für neue Skills, passend zu Level, Baum und Zielen – der API-Schlüssel bleibt serverseitig
 - **Onboarding-Fragebogen**, der aus deinen Antworten (Erfahrungsstand, Fokus, Ziele) einen **personalisierten Skill-Tree** pro Bereich generiert – wer schon weit ist, startet mit entsprechendem Level statt bei null
 - **21 Abzeichen** in Bronze/Silber/Gold mit Fortschrittsanzeige und Freischalt-Feedback
 - **Ressourcen-Bibliothek** über alle Bereiche hinweg, mit Suche und Filtern nach Bereich, Typ und Status
@@ -25,6 +27,9 @@ npm run dev
 
 Dann die angezeigte URL öffnen (standardmäßig http://localhost:5173).
 
+Die App läuft so vollständig lokal. Für Konten, Geräte-Sync und KI-Vorschläge
+kommt einmalig ein Supabase-Projekt dazu – Anleitung in [SETUP.md](./SETUP.md).
+
 Produktions-Build:
 
 ```bash
@@ -34,7 +39,7 @@ npm run preview
 
 ## Tech-Stack
 
-React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) · Zustand · Dexie (IndexedDB)
+React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) · Zustand · Dexie (IndexedDB) · Supabase (Auth, Postgres, Edge Functions)
 
 ## Projektstruktur
 
@@ -42,14 +47,19 @@ React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) �
 src/
   types/       Domain-Typen (Profile, Area, SkillNode, LogEntry, Goal, Resource)
   lib/         Reine Logik: XP-Kurve, Baum-Status/-Tiefe, Streak, Abzeichen
-  data/        Dexie-Schema, Repository-Interface, Onboarding-Katalog + Baum-Generator
+  data/        Repository-Interface mit lokaler (Dexie) und Cloud-Implementierung (Supabase),
+               Onboarding-Katalog + Baum-Generator
   store/       Zustand-Store (App-Logik, XP-Vergabe, CRUD, Abzeichen-Auswertung)
   components/  UI-Bausteine (SkillTree, Modals, XP-Bar, Feedback-Overlays, Tabs)
   pages/       Screens: Onboarding, Dashboard, Area-Detail, Bibliothek, Abzeichen
+supabase/
+  schema.sql   Tabellen + Row Level Security für den Cloud-Modus
+  functions/   Edge Function für die KI-Vorschläge (hält den API-Schlüssel)
 ```
 
 Design-Entscheidungen und Annahmen: siehe [DECISIONS.md](./DECISIONS.md).
 
 ## Roadmap
 
-- **Phase 3:** KI-Personalisierung (Anthropic API), Accounts & Cloud-Sync
+Phasen 1–3 sind umgesetzt. Naheliegende nächste Schritte: Offline-Schreiben im
+angemeldeten Zustand (lokale Queue mit Abgleich), geteilte Bäume und Vorlagen.

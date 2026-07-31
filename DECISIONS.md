@@ -61,6 +61,26 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 
 - Dexie `version(2)` ergänzt nur die Tabelle `achievements`; bestehende Tabellen bleiben unangetastet, vorhandene Spielstände laufen ohne Datenverlust weiter.
 
+## Phase 3
+
+### Backend: Supabase
+
+- **Warum Supabase:** deckt beide Hälften von Phase 3 mit einem Dienst ab — Auth (Konten) und Postgres (Sync) — und über Edge Functions zusätzlich einen serverseitigen Ort für den Anthropic-Schlüssel. Kostenloser Tarif reicht. Das Frontend bleibt eine statische Seite auf GitHub Pages.
+- **Cloud ist optional.** Ohne `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` läuft die App unverändert lokal, und die gesamte Cloud-UI (Anmelden-Knopf, KI-Vorschläge) ist ausgeblendet. Ein fehlendes oder nicht erreichbares Backend ist nie ein harter Fehler — bei Verbindungsproblemen fällt die App auf den lokalen Speicher zurück.
+- **Repository-Umschaltung statt Zwei-Wege-Sync:** Nicht angemeldet → Dexie, angemeldet → `SupabaseRepository`. Beide implementieren dieselbe `LifeRpgRepository`-Schnittstelle aus Phase 1; `repository` ist eine Fassade, die an das aktive Backend delegiert. Bewusst **kein** Offline-Merge mit Konfliktauflösung: das wäre deutlich mehr Code und Fehlerquellen für einen Single-User-Fall. Konsequenz, die man kennen muss: im angemeldeten Zustand braucht Schreiben eine Verbindung.
+- **Erstanmeldung überträgt lokale Daten.** Ist in der Cloud noch kein Profil, wird der lokale Spielstand einmalig hochgeladen — niemand verliert durch das Anlegen eines Kontos seinen Fortschritt.
+- **Schema:** eine Tabelle pro Entität, Primärschlüssel `(user_id, id)`, weil ids weiterhin clientseitig erzeugt werden. Row Level Security mit `auth.uid() = user_id` auf jeder Tabelle ist die eigentliche Absicherung — deshalb ist der `anon`-Key gefahrlos im Browser.
+- Beim Löschen eines Bereichs räumt der Cloud-Repository die abhängigen Zeilen explizit auf (kein FK-Cascade zwischen den Tabellen, da Bereichs-ids Text und nicht global eindeutig sind).
+
+### KI-Personalisierung
+
+- **Der Anthropic-Schlüssel liegt ausschließlich in der Edge Function** (`supabase/functions/suggest-nodes`), nie im Browser-Bundle. Die App ist eine statische Seite — alles, was ins Bundle wandert, wäre öffentlich lesbar. Supabase prüft vor dem Funktionsaufruf das JWT, also erreichen nur angemeldete Nutzer die Funktion.
+- **Strukturierte Ausgabe** (`output_config.format` mit JSON-Schema) statt Freitext-Parsing: die Antwort ist dadurch garantiert schemakonform, kein Nachparsen von Markdown.
+- `effort: "low"` — die Aufgabe ist klein und gut spezifiziert; das hält Kosten und Wartezeit niedrig, ohne an der Modellwahl zu drehen.
+- **Inhaltliche Leitplanken im System-Prompt** spiegeln die Vorgaben aus Phase 1: Gesundheit ohne Gewichts-/Kalorienziele, Finanzen ohne konkrete Anlageempfehlungen.
+- Vorschläge werden **nicht automatisch** übernommen: der Nutzer wählt aus, und neue Knoten hängen sich an den tiefsten bereits abgeschlossenen Knoten des Bereichs, damit der Baum nach unten wächst statt auszufransen.
+- `stop_reason: "refusal"` wird abgefangen und als verständliche Meldung zurückgegeben, statt als leere Antwort zu erscheinen.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.

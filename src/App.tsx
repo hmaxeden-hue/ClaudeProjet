@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
+import { useAuthStore } from './store/useAuthStore';
 import { Layout } from './components/Layout';
 import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
@@ -9,14 +10,17 @@ import { Library } from './pages/Library';
 import { Achievements } from './pages/Achievements';
 
 export default function App() {
-  const status = useAppStore((s) => s.status);
-  const init = useAppStore((s) => s.init);
+  const appStatus = useAppStore((s) => s.status);
+  const authStatus = useAuthStore((s) => s.status);
+  const initAuth = useAuthStore((s) => s.init);
 
+  // Auth decides which backend the app data is loaded from, so it goes first
+  // and triggers the app store's own init once the backend is settled.
   useEffect(() => {
-    void init();
-  }, [init]);
+    void initAuth();
+  }, [initAuth]);
 
-  if (status === 'loading') {
+  if (authStatus === 'loading' || appStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="animate-pulse text-lg text-slate-400">Lade dein Abenteuer …</p>
@@ -24,7 +28,7 @@ export default function App() {
     );
   }
 
-  if (status === 'setup') {
+  if (appStatus === 'setup') {
     return <Onboarding />;
   }
 
