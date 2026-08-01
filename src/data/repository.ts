@@ -41,7 +41,46 @@ export interface LifeRpgRepository {
   addAchievements(unlocks: AchievementUnlock[]): Promise<void>;
 }
 
-class DexieRepository implements LifeRpgRepository {
+/** The local backend can also be reset to a known state (used when pulling). */
+export interface LocalRepository extends LifeRpgRepository {
+  replaceAll(data: AppData): Promise<void>;
+}
+
+class DexieRepository implements LocalRepository {
+  /** Replaces the whole local dataset – used when pulling the cloud state. */
+  async replaceAll(data: AppData): Promise<void> {
+    await db.transaction(
+      'rw',
+      [
+        db.profiles,
+        db.areas,
+        db.nodes,
+        db.logs,
+        db.goals,
+        db.resources,
+        db.achievements,
+      ],
+      async () => {
+        await Promise.all([
+          db.profiles.clear(),
+          db.areas.clear(),
+          db.nodes.clear(),
+          db.logs.clear(),
+          db.goals.clear(),
+          db.resources.clear(),
+          db.achievements.clear(),
+        ]);
+        if (data.profile) await db.profiles.put(data.profile);
+        await db.areas.bulkPut(data.areas);
+        await db.nodes.bulkPut(data.nodes);
+        await db.logs.bulkPut(data.logs);
+        await db.goals.bulkPut(data.goals);
+        await db.resources.bulkPut(data.resources);
+        await db.achievements.bulkPut(data.achievements);
+      },
+    );
+  }
+
   async loadAll(): Promise<AppData> {
     const [profiles, areas, nodes, logs, goals, resources, achievements] =
       await Promise.all([
@@ -152,7 +191,7 @@ class DexieRepository implements LifeRpgRepository {
 }
 
 /** The local, offline-capable backend. Always available. */
-export const localRepository: LifeRpgRepository = new DexieRepository();
+export const localRepository: LocalRepository = new DexieRepository();
 
 /**
  * The backend the app currently talks to. Swapped to the cloud implementation

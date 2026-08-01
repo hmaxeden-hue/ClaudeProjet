@@ -18,6 +18,7 @@ export class LifeRpgDatabase extends Dexie {
   goals!: Table<Goal, string>;
   resources!: Table<Resource, string>;
   achievements!: Table<AchievementUnlock, string>;
+  outbox!: Table<OutboxEntry, number>;
 
   constructor() {
     super('life-rpg');
@@ -33,7 +34,19 @@ export class LifeRpgDatabase extends Dexie {
     this.version(2).stores({
       achievements: 'id',
     });
+    // v3 adds the outbox that lets writes survive being offline.
+    this.version(3).stores({
+      outbox: '++seq',
+    });
   }
+}
+
+/** A write that still has to reach the cloud, replayed in insertion order. */
+export interface OutboxEntry {
+  seq?: number;
+  op: string;
+  args: unknown[];
+  createdAt: string;
 }
 
 export const db = new LifeRpgDatabase();

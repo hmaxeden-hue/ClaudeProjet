@@ -5,6 +5,8 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 
 ## Features
 
+- **Installierbar als App** (PWA): eigenes Icon, Start ohne Browserleiste, funktioniert auch ohne Netz
+- **Offline-fähig**: Änderungen werden immer sofort lokal gespeichert und automatisch hochgeladen, sobald wieder Verbindung besteht
 - **Konten & Cloud-Sync** (optional): angemeldet teilen Handy und Desktop denselben Spielstand; ohne Konto läuft alles rein lokal weiter
 - **KI-Vorschläge** für neue Skills, passend zu Level, Baum und Zielen – der API-Schlüssel bleibt serverseitig
 - **Onboarding-Fragebogen**, der aus deinen Antworten (Erfahrungsstand, Fokus, Ziele) einen **personalisierten Skill-Tree** pro Bereich generiert – wer schon weit ist, startet mit entsprechendem Level statt bei null
@@ -37,6 +39,12 @@ npm run build
 npm run preview
 ```
 
+Tests:
+
+```bash
+npm test
+```
+
 ## Tech-Stack
 
 React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) · Zustand · Dexie (IndexedDB) · Supabase (Auth, Postgres, Edge Functions)
@@ -47,8 +55,8 @@ React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) �
 src/
   types/       Domain-Typen (Profile, Area, SkillNode, LogEntry, Goal, Resource)
   lib/         Reine Logik: XP-Kurve, Baum-Status/-Tiefe, Streak, Abzeichen
-  data/        Repository-Interface mit lokaler (Dexie) und Cloud-Implementierung (Supabase),
-               Onboarding-Katalog + Baum-Generator
+  data/        Repository-Interface mit lokaler (Dexie), Cloud- (Supabase) und
+               synchronisierender Implementierung; Outbox; Onboarding-Katalog + Baum-Generator
   store/       Zustand-Store (App-Logik, XP-Vergabe, CRUD, Abzeichen-Auswertung)
   components/  UI-Bausteine (SkillTree, Modals, XP-Bar, Feedback-Overlays, Tabs)
   pages/       Screens: Onboarding, Dashboard, Area-Detail, Bibliothek, Abzeichen
@@ -61,5 +69,6 @@ Design-Entscheidungen und Annahmen: siehe [DECISIONS.md](./DECISIONS.md).
 
 ## Roadmap
 
-Phasen 1–3 sind umgesetzt. Naheliegende nächste Schritte: Offline-Schreiben im
-angemeldeten Zustand (lokale Queue mit Abgleich), geteilte Bäume und Vorlagen.
+Phasen 1–3 sind umgesetzt, dazu Offline-Betrieb und Installierbarkeit.
+Naheliegende nächste Schritte: KI-generierter Start-Baum im Onboarding,
+Zerlegung großer Ziele in Zwischenschritte, wöchentlicher Rückblick.

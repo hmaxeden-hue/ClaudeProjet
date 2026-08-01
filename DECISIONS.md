@@ -67,7 +67,7 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 
 - **Warum Supabase:** deckt beide Hälften von Phase 3 mit einem Dienst ab — Auth (Konten) und Postgres (Sync) — und über Edge Functions zusätzlich einen serverseitigen Ort für den Anthropic-Schlüssel. Kostenloser Tarif reicht. Das Frontend bleibt eine statische Seite auf GitHub Pages.
 - **Cloud ist optional.** Ohne `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` läuft die App unverändert lokal, und die gesamte Cloud-UI (Anmelden-Knopf, KI-Vorschläge) ist ausgeblendet. Ein fehlendes oder nicht erreichbares Backend ist nie ein harter Fehler — bei Verbindungsproblemen fällt die App auf den lokalen Speicher zurück.
-- **Repository-Umschaltung statt Zwei-Wege-Sync:** Nicht angemeldet → Dexie, angemeldet → `SupabaseRepository`. Beide implementieren dieselbe `LifeRpgRepository`-Schnittstelle aus Phase 1; `repository` ist eine Fassade, die an das aktive Backend delegiert. Bewusst **kein** Offline-Merge mit Konfliktauflösung: das wäre deutlich mehr Code und Fehlerquellen für einen Single-User-Fall. Konsequenz, die man kennen muss: im angemeldeten Zustand braucht Schreiben eine Verbindung.
+- **Repository-Umschaltung:** Nicht angemeldet → Dexie, angemeldet → Cloud. Beide implementieren dieselbe `LifeRpgRepository`-Schnittstelle aus Phase 1; `repository` ist eine Fassade, die an das aktive Backend delegiert. *(Nachträglich verfeinert: im angemeldeten Zustand steht heute `SyncingRepository` dazwischen, siehe „Offline-Betrieb & Installierbarkeit" — ursprünglich schrieb die App dort direkt in die Cloud und brauchte dafür eine Verbindung.)*
 - **Erstanmeldung überträgt lokale Daten.** Ist in der Cloud noch kein Profil, wird der lokale Spielstand einmalig hochgeladen — niemand verliert durch das Anlegen eines Kontos seinen Fortschritt.
 - **Schema:** eine Tabelle pro Entität, Primärschlüssel `(user_id, id)`, weil ids weiterhin clientseitig erzeugt werden. Row Level Security mit `auth.uid() = user_id` auf jeder Tabelle ist die eigentliche Absicherung — deshalb ist der `anon`-Key gefahrlos im Browser.
 - Beim Löschen eines Bereichs räumt der Cloud-Repository die abhängigen Zeilen explizit auf (kein FK-Cascade zwischen den Tabellen, da Bereichs-ids Text und nicht global eindeutig sind).
@@ -81,10 +81,32 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 - Vorschläge werden **nicht automatisch** übernommen: der Nutzer wählt aus, und neue Knoten hängen sich an den tiefsten bereits abgeschlossenen Knoten des Bereichs, damit der Baum nach unten wächst statt auszufransen.
 - `stop_reason: "refusal"` wird abgefangen und als verständliche Meldung zurückgegeben, statt als leere Antwort zu erscheinen.
 
+## Offline-Betrieb & Installierbarkeit
+
+### Lokal-zuerst statt Cloud-zuerst
+
+- Die frühere Lösung schaltete im angemeldeten Zustand komplett auf Supabase um — jede Speicherung brauchte damit eine Verbindung. Das ist jetzt umgedreht: **`SyncingRepository` schreibt immer zuerst lokal** (Dexie) und hängt die Änderung zusätzlich an eine **Outbox** an, die im Hintergrund in die Cloud gespielt wird.
+- Lesen geht ausschließlich lokal — die App ist dadurch auch bei schlechter Verbindung sofort bedienbar.
+- **Die Outbox ist ein geordnetes Log, kein Mengen-Abgleich.** `drainQueue` spielt die Einträge in Einfügereihenfolge ab und **stoppt beim ersten Fehler**. Das ist bewusst so: Ein Überspringen könnte eine spätere Änderung desselben Datensatzes vor eine frühere ziehen — oder ein Löschen vor das zugehörige Anlegen.
+- Die Reihenfolge-Logik liegt in `lib`-Manier als **reine Funktion** (`data/outbox.ts`) getrennt von Speicher und Netzwerk, damit genau dieser Teil testbar ist. Hier verliert man am leisesten Daten.
+- **Beim Anmelden** wird zuerst die Outbox geleert, dann der Cloud-Stand geholt und lokal als Basis gesetzt. Ist noch etwas ausstehend, wird **nicht** überschrieben — sonst würden Offline-Änderungen verworfen.
+- Konflikte zwischen zwei Geräten werden weiterhin per *last write wins* aufgelöst. Für einen Einzelnutzer ist das angemessen; echtes Merging wäre deutlich mehr Maschinerie ohne erkennbaren Gewinn.
+- Der Sync-Status ist nur sichtbar, **wenn es etwas zu sehen gibt**: offline oder mit ausstehenden Uploads. Ein dauerhaftes „alles synchron" wäre nur Rauschen.
+
+### PWA
+
+- `vite-plugin-pwa` mit `registerType: 'autoUpdate'` — neue Versionen werden ohne Zutun übernommen.
+- `start_url` und `scope` sind **relativ** (`.`), damit die App eine Umbenennung des Repositorys überlebt (der Pfad auf GitHub Pages ändert sich dabei).
+- Nur die App-Hülle wird gecacht. **Supabase-Anfragen laufen bewusst nie über den Cache** — Offline-Fähigkeit kommt aus der Outbox, nicht aus veralteten Antworten.
+
+### Tests
+
+- Erstmals automatisierte Tests (Vitest), gezielt für die Outbox: reine Reihenfolge-Logik plus Integration von `SyncingRepository` gegen echtes Dexie (via `fake-indexeddb`) mit einer Cloud-Attrappe. Abgedeckt sind die Fälle, die still Daten verlieren würden: Schreiben ohne Verbindung, Nachsenden in Reihenfolge, Fehler mitten in der Warteschlange.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.
 - Log-Einträge löschen entfernt die XP **nicht** rückwirkend (Logs sind Journal, keine Buchhaltung). Store-API `deleteLog` existiert, ist aber bewusst nicht prominent in der UI.
-- Noch keine automatisierten Tests; die Logik-Kerne (`lib/xp.ts`, `lib/tree.ts`, `lib/streak.ts`, `lib/achievements.ts`, `data/onboarding.ts`) sind als reine Funktionen geschnitten, damit Tests leicht nachrüstbar sind. Verifiziert wurde bisher über Browser-Durchläufe.
+- Getestet sind bislang nur Outbox und Sync (die riskantesten Teile). Die übrigen Logik-Kerne (`lib/xp.ts`, `lib/tree.ts`, `lib/streak.ts`, `lib/achievements.ts`, `data/onboarding.ts`) sind als reine Funktionen geschnitten und ebenso leicht testbar; verifiziert wurden sie bisher über Browser-Durchläufe.
 - Das Onboarding lässt sich nach dem Abschluss nicht erneut starten – der Baum wird stattdessen manuell weiter bearbeitet. Ein „Baum zurücksetzen" wäre ein eigenes Feature.
 - Phase 3: KI-Vorschläge (Anthropic API), Accounts + Sync – Repository-Interface ist dafür vorbereitet.
