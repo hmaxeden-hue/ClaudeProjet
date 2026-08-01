@@ -1,4 +1,5 @@
 import type { NodeType } from '../types/models';
+import { sanitizeAiNodes, type ResolvedNode } from '../data/onboarding';
 import { supabase } from './supabase';
 
 export interface NodeSuggestion {
@@ -80,4 +81,33 @@ export async function fetchNodeSuggestions(
   if (data?.error) throw new Error(data.error);
 
   return (data?.suggestions ?? []) as NodeSuggestion[];
+}
+
+export interface TreeRequest {
+  areaName: string;
+  areaDescription: string;
+  experience: string;
+  focus: string[];
+  goalText: string;
+}
+
+/**
+ * Asks the backend to design a whole skill tree for one area. The result is
+ * sanitized before it is handed back, so callers always get a valid DAG.
+ */
+export async function fetchGeneratedTree(
+  input: TreeRequest,
+): Promise<ResolvedNode[]> {
+  if (!supabase) {
+    throw new Error('Für KI-Bäume musst du angemeldet sein.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('generate-tree', {
+    body: input,
+  });
+
+  if (error) throw new Error(await describeInvokeError(error));
+  if (data?.error) throw new Error(data.error);
+
+  return sanitizeAiNodes(data?.nodes ?? []);
 }

@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import {
+  DEFAULT_ANSWER,
   ONBOARDING_AREAS,
   type AreaAnswer,
   type ExperienceLevel,
   type OnboardingAnswers,
+  type ResolvedNode,
 } from '../data/onboarding';
 import { useAppStore } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { isCloudConfigured } from '../lib/supabase';
+import { fetchGeneratedTree } from '../lib/ai';
+import { AuthModal } from '../components/AuthModal';
 
-const DEFAULT_ANSWER: AreaAnswer = {
-  experience: 'beginner',
-  tags: [],
-  goalText: '',
-};
+type BuildState = 'idle' | 'pending' | 'done' | 'failed';
 
 export function Onboarding() {
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
@@ -23,14 +25,20 @@ export function Onboarding() {
   );
   const [answers, setAnswers] = useState<OnboardingAnswers>({});
   const [busy, setBusy] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [buildStates, setBuildStates] = useState<Record<string, BuildState>>({});
+  const [buildError, setBuildError] = useState<string | null>(null);
+  const isSignedIn = useAuthStore((s) => s.status) === 'signed_in';
 
   const activeAreas = useMemo(
     () => ONBOARDING_AREAS.filter((a) => selectedAreaIds.includes(a.areaId)),
     [selectedAreaIds],
   );
 
-  // Step 0 = name, step 1 = area picking, then one step per selected area.
-  const totalSteps = 2 + activeAreas.length;
+  // Step 0 = name, 1 = area picking, then one step per area, then the
+  // question of how the trees should be built.
+  const totalSteps = 3 + activeAreas.length;
+  const isBuildStep = step === totalSteps - 1;
   const areaStepIndex = step - 2;
   const currentArea = activeAreas[areaStepIndex];
 
@@ -59,20 +67,63 @@ export function Onboarding() {
         ? selectedAreaIds.length > 0
         : true;
 
-  const isLastStep = step === totalSteps - 1;
-
-  const finish = async () => {
+  const finishWithTemplates = async () => {
     if (busy) return;
     setBusy(true);
     await completeOnboarding({ name, selectedAreaIds, answers });
   };
 
+  /**
+   * Designs every selected area's tree in parallel. A failure is contained:
+   * that area silently falls back to the template catalog, so onboarding
+   * always finishes with a complete set of trees.
+   */
+  const finishWithAi = async () => {
+    if (busy) return;
+    setBusy(true);
+    setBuildError(null);
+    setBuildStates(
+      Object.fromEntries(activeAreas.map((a) => [a.areaId, 'pending'])),
+    );
+
+    const results = await Promise.all(
+      activeAreas.map(async (config) => {
+        const answer = answerFor(config.areaId);
+        try {
+          const nodes = await fetchGeneratedTree({
+            areaName: config.name,
+            areaDescription: config.description,
+            experience: answer.experience,
+            focus: config.focusOptions
+              .filter((o) => answer.tags.includes(o.tag))
+              .map((o) => o.label.replace(/^\S+\s/, '')),
+            goalText: answer.goalText,
+          });
+          setBuildStates((prev) => ({
+            ...prev,
+            [config.areaId]: nodes.length > 0 ? 'done' : 'failed',
+          }));
+          return [config.areaId, nodes] as const;
+        } catch (error) {
+          setBuildStates((prev) => ({ ...prev, [config.areaId]: 'failed' }));
+          setBuildError((error as Error).message);
+          return [config.areaId, [] as ResolvedNode[]] as const;
+        }
+      }),
+    );
+
+    const aiNodesByArea: Record<string, ResolvedNode[]> = {};
+    for (const [areaId, nodes] of results) {
+      if (nodes.length > 0) aiNodesByArea[areaId] = nodes;
+    }
+
+    // Let the finished state show for a beat before the dashboard appears.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await completeOnboarding({ name, selectedAreaIds, answers, aiNodesByArea });
+  };
+
   const next = () => {
     if (!canContinue) return;
-    if (isLastStep) {
-      void finish();
-      return;
-    }
     setStep((s) => s + 1);
   };
 
@@ -274,9 +325,93 @@ export function Onboarding() {
             </div>
           )}
 
+
+          {isBuildStep && (
+            <div>
+              <h2 className="text-xl font-bold">
+                Wie sollen deine Bäume entstehen?
+              </h2>
+              <p className="mt-1.5 text-sm text-slate-400">
+                Beides führt zu einem vollständigen Baum pro Bereich — ändern
+                kannst du danach jeden Knoten.
+              </p>
+
+              {busy ? (
+                <div className="mt-6 space-y-2">
+                  {activeAreas.map((area) => {
+                    const state = buildStates[area.areaId] ?? 'idle';
+                    return (
+                      <div
+                        key={area.areaId}
+                        className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3"
+                      >
+                        <span className="text-xl">{area.icon}</span>
+                        <span className="flex-1 font-medium">{area.name}</span>
+                        <span className="text-sm text-slate-400">
+                          {state === 'pending' && (
+                            <span className="animate-pulse">entwirft …</span>
+                          )}
+                          {state === 'done' && (
+                            <span className="text-emerald-400">✓ fertig</span>
+                          )}
+                          {state === 'failed' && (
+                            <span className="text-amber-400">Vorlage</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <p className="pt-2 text-center text-xs text-slate-500">
+                    Das dauert einen Moment — die KI entwirft jeden Baum einzeln.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isSignedIn) void finishWithAi();
+                      else setShowAuth(true);
+                    }}
+                    disabled={!isCloudConfigured}
+                    className="w-full rounded-xl border border-sky-500/50 bg-sky-500/10 p-4 text-left transition hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <div className="font-bold text-sky-300">
+                      ✨ Von der KI entwerfen lassen
+                    </div>
+                    <div className="mt-1 text-sm text-slate-400">
+                      {!isCloudConfigured
+                        ? 'Dafür muss die App mit einem Konto verbunden sein — siehe SETUP.md.'
+                        : isSignedIn
+                          ? 'Baut für jeden Bereich einen eigenen Baum aus deinen Antworten.'
+                          : 'Braucht ein Konto — du kannst dich gleich hier anmelden.'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void finishWithTemplates()}
+                    className="w-full rounded-xl border border-slate-700 p-4 text-left transition hover:border-slate-500"
+                  >
+                    <div className="font-bold">⚔️ Aus Vorlagen erstellen</div>
+                    <div className="mt-1 text-sm text-slate-400">
+                      Sofort fertig, funktioniert auch ohne Konto und ohne Netz.
+                    </div>
+                  </button>
+
+                  {buildError && (
+                    <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                      {buildError}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="mt-7 flex items-center gap-3">
-            {step > 0 && (
+            {step > 0 && !busy && (
               <button
                 type="button"
                 onClick={() => setStep((s) => s - 1)}
@@ -285,25 +420,32 @@ export function Onboarding() {
                 Zurück
               </button>
             )}
-            <button
-              type="button"
-              onClick={next}
-              disabled={!canContinue || busy}
-              className="flex-1 rounded-lg bg-sky-500 py-2.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:opacity-40"
-            >
-              {busy
-                ? 'Baue deine Welt …'
-                : isLastStep
-                  ? '⚔️ Skill-Trees erstellen'
-                  : 'Weiter'}
-            </button>
+            {!isBuildStep && (
+              <button
+                type="button"
+                onClick={next}
+                disabled={!canContinue || busy}
+                className="flex-1 rounded-lg bg-sky-500 py-2.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:opacity-40"
+              >
+                Weiter
+              </button>
+            )}
           </div>
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-500">
-          Alle Daten bleiben lokal auf deinem Gerät gespeichert.
+          Ohne Konto bleiben alle Daten lokal auf deinem Gerät.
         </p>
       </div>
+
+      {showAuth && (
+        <AuthModal
+          onClose={() => {
+            setShowAuth(false);
+            if (useAuthStore.getState().status === 'signed_in') void finishWithAi();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -709,14 +709,207 @@ export interface GeneratedSetup {
 }
 
 /**
+ * A node ready to be assembled into an area — the common shape produced by
+ * both the template catalog and the AI, so the assembly below is shared.
+ */
+export interface ResolvedNode {
+  key: string;
+  title: string;
+  description: string;
+  prerequisites: string[];
+  xpReward: number;
+  type: NodeType;
+  stage: number;
+}
+
+/** Node shape returned by the tree-generating edge function. */
+export interface AiNode {
+  key?: unknown;
+  title?: unknown;
+  description?: unknown;
+  prerequisites?: unknown;
+  xpReward?: unknown;
+  type?: unknown;
+  stage?: unknown;
+}
+
+const NODE_TYPES: NodeType[] = ['quest', 'habit', 'milestone'];
+const ALLOWED_XP = [50, 75, 100, 125, 150, 200];
+
+function nearestXp(value: unknown): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : 75;
+  return ALLOWED_XP.reduce((best, candidate) =>
+    Math.abs(candidate - n) < Math.abs(best - n) ? candidate : best,
+  );
+}
+
+/**
+ * Turns raw AI output into nodes we are willing to build a tree from.
+ *
+ * The important guarantee is acyclicity: a prerequisite is only kept when it
+ * refers to a node defined *earlier* in the list. A model that invents a key,
+ * points at itself, or wires up a loop therefore cannot produce a tree with
+ * permanently unreachable nodes.
+ */
+export function sanitizeAiNodes(raw: AiNode[]): ResolvedNode[] {
+  const seen = new Set<string>();
+  const result: ResolvedNode[] = [];
+
+  for (const node of raw ?? []) {
+    const key = typeof node.key === 'string' ? node.key.trim() : '';
+    const title = typeof node.title === 'string' ? node.title.trim() : '';
+    if (!key || !title || seen.has(key)) continue;
+
+    const prerequisites = Array.isArray(node.prerequisites)
+      ? node.prerequisites.filter(
+          (p): p is string => typeof p === 'string' && p !== key && seen.has(p),
+        )
+      : [];
+
+    const stageValue = typeof node.stage === 'number' ? Math.round(node.stage) : 0;
+
+    result.push({
+      key,
+      title,
+      description:
+        typeof node.description === 'string' ? node.description.trim() : '',
+      prerequisites,
+      xpReward: nearestXp(node.xpReward),
+      type: NODE_TYPES.includes(node.type as NodeType)
+        ? (node.type as NodeType)
+        : 'quest',
+      stage: Math.min(3, Math.max(0, stageValue)),
+    });
+    seen.add(key);
+  }
+
+  return result;
+}
+
+/** Picks the template nodes that match the chosen focus tags. */
+function templateNodes(
+  config: OnboardingAreaConfig,
+  answer: AreaAnswer,
+): ResolvedNode[] {
+  const selected = config.templates.filter(
+    (t) => !t.requiresTag || answer.tags.includes(t.requiresTag),
+  );
+  const keys = new Set(selected.map((t) => t.key));
+  return selected.map((t) => ({
+    key: t.key,
+    title: t.title,
+    description: t.description,
+    prerequisites: t.prerequisites.filter((k) => keys.has(k)),
+    xpReward: t.xpReward,
+    type: t.type,
+    stage: t.stage,
+  }));
+}
+
+interface BuiltArea {
+  area: Area;
+  nodes: SkillNode[];
+  goals: Goal[];
+  logs: LogEntry[];
+}
+
+/**
+ * Builds one area from resolved nodes. Nodes at or below the stage implied by
+ * the stated experience start out completed and their XP counts as existing
+ * progress, so the starting level reflects where the person actually is.
+ */
+function assembleArea(
+  config: OnboardingAreaConfig,
+  answer: AreaAnswer,
+  sortOrder: number,
+  resolved: ResolvedNode[],
+  now: string,
+): BuiltArea {
+  const option = config.experienceOptions.find(
+    (o) => o.value === answer.experience,
+  );
+  const completedThroughStage = option?.completedThroughStage ?? -1;
+
+  const idByKey = new Map(resolved.map((n) => [n.key, createId()]));
+  let startingXp = 0;
+
+  const nodes: SkillNode[] = resolved.map((n) => {
+    const isCompleted = n.stage <= completedThroughStage;
+    if (isCompleted) startingXp += n.xpReward;
+    return {
+      id: idByKey.get(n.key)!,
+      areaId: config.areaId,
+      title: n.title,
+      description: n.description,
+      prerequisites: n.prerequisites
+        .filter((k) => idByKey.has(k))
+        .map((k) => idByKey.get(k)!),
+      xpReward: n.xpReward,
+      status: isCompleted ? 'completed' : 'locked',
+      type: n.type,
+      completedAt: isCompleted ? now : undefined,
+    };
+  });
+
+  const goals: Goal[] = [];
+  const goalText = answer.goalText.trim();
+  if (goalText) {
+    goals.push({
+      id: createId(),
+      areaId: config.areaId,
+      title: goalText,
+      description: 'Aus dem Onboarding übernommen.',
+      status: 'open',
+      xpReward: 100,
+    });
+  }
+
+  const logs: LogEntry[] = [];
+  if (startingXp > 0) {
+    logs.push({
+      id: createId(),
+      areaId: config.areaId,
+      description: 'Bestehender Fortschritt aus dem Onboarding',
+      xp: startingXp,
+      timestamp: now,
+    });
+  }
+
+  return {
+    area: {
+      id: config.areaId,
+      name: config.name,
+      icon: config.icon,
+      color: config.color,
+      description: config.description,
+      xp: startingXp,
+      sortOrder,
+      isCustom: false,
+      suggestedActivities: config.suggestedActivities,
+    },
+    nodes,
+    goals,
+    logs,
+  };
+}
+
+export const DEFAULT_ANSWER: AreaAnswer = {
+  experience: 'beginner',
+  tags: [],
+  goalText: '',
+};
+
+/**
  * Turns the questionnaire answers into a personalized starting setup.
- * Nodes below the user's stated experience level start out completed and
- * their XP counts as existing progress, so the starting level reflects
- * where the person actually is.
+ *
+ * `aiNodesByArea` may supply an AI-generated tree per area; areas without one
+ * (never requested, or the request failed) fall back to the template catalog,
+ * so a partial AI failure still yields a complete setup.
  */
 export function generateSetup(
   selectedAreaIds: string[],
   answers: OnboardingAnswers,
+  aiNodesByArea: Record<string, ResolvedNode[]> = {},
 ): GeneratedSetup {
   const areas: Area[] = [];
   const nodes: SkillNode[] = [];
@@ -727,78 +920,16 @@ export function generateSetup(
   ONBOARDING_AREAS.filter((config) =>
     selectedAreaIds.includes(config.areaId),
   ).forEach((config, index) => {
-    const answer = answers[config.areaId] ?? {
-      experience: 'beginner' as const,
-      tags: [],
-      goalText: '',
-    };
-    const option = config.experienceOptions.find(
-      (o) => o.value === answer.experience,
-    );
-    const completedThroughStage = option?.completedThroughStage ?? -1;
+    const answer = answers[config.areaId] ?? DEFAULT_ANSWER;
+    const fromAi = aiNodesByArea[config.areaId];
+    const resolved =
+      fromAi && fromAi.length > 0 ? fromAi : templateNodes(config, answer);
 
-    // Keep templates that are either unconditional or match a chosen focus.
-    const selected = config.templates.filter(
-      (t) => !t.requiresTag || answer.tags.includes(t.requiresTag),
-    );
-    const selectedKeys = new Set(selected.map((t) => t.key));
-
-    // Map template keys to generated ids so prerequisites stay intact.
-    const idByKey = new Map(selected.map((t) => [t.key, createId()]));
-
-    let startingXp = 0;
-    selected.forEach((template) => {
-      const isCompleted = template.stage <= completedThroughStage;
-      if (isCompleted) startingXp += template.xpReward;
-      nodes.push({
-        id: idByKey.get(template.key)!,
-        areaId: config.areaId,
-        title: template.title,
-        description: template.description,
-        // Drop prerequisites whose template was filtered out.
-        prerequisites: template.prerequisites
-          .filter((key) => selectedKeys.has(key))
-          .map((key) => idByKey.get(key)!),
-        xpReward: template.xpReward,
-        status: isCompleted ? 'completed' : 'locked',
-        type: template.type,
-        completedAt: isCompleted ? now : undefined,
-      });
-    });
-
-    areas.push({
-      id: config.areaId,
-      name: config.name,
-      icon: config.icon,
-      color: config.color,
-      description: config.description,
-      xp: startingXp,
-      sortOrder: index,
-      isCustom: false,
-      suggestedActivities: config.suggestedActivities,
-    });
-
-    if (startingXp > 0) {
-      logs.push({
-        id: createId(),
-        areaId: config.areaId,
-        description: 'Bestehender Fortschritt aus dem Onboarding',
-        xp: startingXp,
-        timestamp: now,
-      });
-    }
-
-    const goalText = answer.goalText.trim();
-    if (goalText) {
-      goals.push({
-        id: createId(),
-        areaId: config.areaId,
-        title: goalText,
-        description: 'Aus dem Onboarding übernommen.',
-        status: 'open',
-        xpReward: 100,
-      });
-    }
+    const built = assembleArea(config, answer, index, resolved, now);
+    areas.push(built.area);
+    nodes.push(...built.nodes);
+    goals.push(...built.goals);
+    logs.push(...built.logs);
   });
 
   return { areas, nodes: recomputeNodeStatuses(nodes), goals, logs };

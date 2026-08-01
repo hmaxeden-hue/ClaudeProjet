@@ -103,6 +103,14 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 
 - Erstmals automatisierte Tests (Vitest), gezielt für die Outbox: reine Reihenfolge-Logik plus Integration von `SyncingRepository` gegen echtes Dexie (via `fake-indexeddb`) mit einer Cloud-Attrappe. Abgedeckt sind die Fälle, die still Daten verlieren würden: Schreiben ohne Verbindung, Nachsenden in Reihenfolge, Fehler mitten in der Warteschlange.
 
+## KI-generierter Start-Baum
+
+- **Der Zeitpunkt ist das eigentliche Problem:** Die KI-Funktionen setzen eine Anmeldung voraus, das Onboarding läuft aber normalerweise, bevor jemand ein Konto hat. Gelöst als **Wahl am Ende des Fragebogens** — „von der KI entwerfen lassen" (öffnet bei Bedarf direkt den Anmelde-Dialog und startet danach automatisch) oder „aus Vorlagen erstellen" (sofort, ohne Konto, ohne Netz). Der Vorlagen-Pfad bleibt damit vollwertig und ist die Rückfallebene.
+- **Ein Aufruf pro Bereich statt einem für alles.** Ein Fehler betrifft dann nur einen Bereich — der fällt still auf seine Vorlage zurück, statt das ganze Onboarding scheitern zu lassen. Nebeneffekt: Die Bäume laufen parallel und der Fortschritt ist pro Bereich sichtbar.
+- **Acyclicity wird nicht erhofft, sondern erzwungen.** `sanitizeAiNodes` behält eine Voraussetzung nur, wenn sie auf einen **weiter oben in der Liste** definierten Knoten zeigt. Ein Modell, das einen Key erfindet, auf sich selbst zeigt oder einen Kreis baut, kann deshalb keinen Baum mit unerreichbaren Knoten erzeugen. Unplausible Werte (XP, stage, type) werden auf den nächstliegenden gültigen Wert gezogen, statt den Knoten zu verwerfen.
+- **Vorlagen und KI teilen den Zusammenbau.** Beide Pfade erzeugen `ResolvedNode[]`, danach ist der Code identisch — inklusive der Regel, dass Knoten unterhalb des angegebenen Erfahrungsstands als bereits erledigt starten. Das Feature „du startest auf deinem echten Level" gilt damit auch für KI-Bäume.
+- Das Modell bekommt `stage` als Ordnungsprinzip vorgegeben (0 = Grundlage … 3 = Meisterschaft) und wird angewiesen, **Verzweigungen statt einer Kette** zu bauen — sonst entsteht regelmäßig ein linearer Strang, der die Baum-Darstellung sinnlos macht.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.

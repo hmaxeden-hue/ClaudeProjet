@@ -12,6 +12,7 @@ import { repository } from '../data/repository';
 import {
   generateSetup,
   type OnboardingAnswers,
+  type ResolvedNode,
 } from '../data/onboarding';
 import { createId } from '../lib/id';
 import { levelFromXp } from '../lib/xp';
@@ -64,6 +65,8 @@ interface AppState {
     name: string;
     selectedAreaIds: string[];
     answers: OnboardingAnswers;
+    /** AI-designed trees per area; areas without one fall back to templates. */
+    aiNodesByArea?: Record<string, ResolvedNode[]>;
   }) => Promise<void>;
 
   logActivity: (input: {
@@ -208,7 +211,12 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ ...data, status: 'ready' });
     },
 
-    completeOnboarding: async ({ name, selectedAreaIds, answers }) => {
+    completeOnboarding: async ({
+      name,
+      selectedAreaIds,
+      answers,
+      aiNodesByArea,
+    }) => {
       const profile: Profile = {
         id: 'profile',
         name: name.trim() || 'Held:in',
@@ -217,6 +225,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const { areas, nodes, goals, logs } = generateSetup(
         selectedAreaIds,
         answers,
+        aiNodesByArea,
       );
       await repository.seed({
         profile,
