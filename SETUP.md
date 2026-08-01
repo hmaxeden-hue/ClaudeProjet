@@ -56,14 +56,19 @@ dem Server** liegt und nie im Browser landet.
    | ------------------- | ----------------------------- |
    | `ANTHROPIC_API_KEY` | dein Schlüssel (`sk-ant-…`)   |
 
-2. **Funktion veröffentlichen:** In Supabase auf **Edge Functions → Deploy a
-   new function**, als Namen exakt **`suggest-nodes`** eintragen und den Inhalt
-   von [`supabase/functions/suggest-nodes/index.ts`](./supabase/functions/suggest-nodes/index.ts)
-   einfügen. Dann auf **Deploy**.
+2. **Funktionen veröffentlichen:** In Supabase auf **Edge Functions → Deploy a
+   new function**. Es sind **zwei** Funktionen, jeweils mit exakt diesem Namen:
 
-3. **„Verify JWT" ausschalten:** Bei der Funktion auf **Settings** (bzw. das
-   Zahnrad neben `suggest-nodes`) und den Schalter **Verify JWT with legacy
-   secret** / **Enforce JWT Verification** auf **aus** stellen.
+   | Name | Inhalt | Wofür |
+   | --- | --- | --- |
+   | `suggest-nodes` | [`supabase/functions/suggest-nodes/index.ts`](./supabase/functions/suggest-nodes/index.ts) | Vorschläge für einzelne Skills im Baum |
+   | `generate-tree` | [`supabase/functions/generate-tree/index.ts`](./supabase/functions/generate-tree/index.ts) | Kompletter Start-Baum im Onboarding |
+
+   Beide brauchen dasselbe Secret `ANTHROPIC_API_KEY` aus Schritt 1.
+
+3. **„Verify JWT" ausschalten** — bei **beiden** Funktionen: auf **Settings**
+   (bzw. das Zahnrad neben dem Funktionsnamen) und den Schalter **Verify JWT
+   with legacy secret** / **Enforce JWT Verification** auf **aus** stellen.
 
    Das klingt nach einem Sicherheitsloch, ist aber keins: Die Prüfung des
    Gateways lehnt auch die Vorab-Anfrage ab, die jeder Browser aus
@@ -75,8 +80,9 @@ dem Server** liegt und nie im Browser landet.
 > **Wichtig:** Ein neu angelegtes oder geändertes Secret wirkt erst, nachdem die
 > Funktion **einmal neu veröffentlicht** wurde.
 
-Danach erscheint im Skill-Tree jedes Bereichs der Knopf **✨ KI-Vorschläge**
-(sichtbar, sobald du angemeldet bist).
+Danach stehen dir zwei KI-Funktionen zur Verfügung, sobald du angemeldet bist:
+im Skill-Tree jedes Bereichs der Knopf **✨ KI-Vorschläge**, und im Onboarding
+die Option, den kompletten Start-Baum von der KI entwerfen zu lassen.
 
 ### Was kostet das?
 
@@ -91,6 +97,8 @@ Nutzung typischerweise im Bereich weniger Cent pro Monat liegt.
 - **Nicht angemeldet:** alles läuft wie bisher lokal im Browser (IndexedDB).
 - **Erste Anmeldung:** ein vorhandener lokaler Spielstand wird automatisch in
   dein Konto hochgeladen, damit nichts verloren geht.
-- **Angemeldet:** die App liest und schreibt in der Cloud — Handy und Desktop
-  zeigen denselben Stand.
-- **Abmelden:** die App fällt auf den lokalen Speicher zurück.
+- **Angemeldet:** die App speichert weiterhin sofort lokal und lädt jede
+  Änderung im Hintergrund hoch — Handy und Desktop zeigen denselben Stand, und
+  ohne Verbindung kannst du trotzdem weiterarbeiten. Ausstehende Uploads zeigt
+  die Kopfzeile an.
+- **Abmelden:** die App bleibt beim lokalen Speicher.
