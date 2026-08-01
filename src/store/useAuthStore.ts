@@ -6,6 +6,7 @@ import {
   useLocalRepository,
 } from '../data/repository';
 import { SupabaseRepository } from '../data/supabaseRepository';
+import { SyncingRepository } from '../data/syncingRepository';
 import { useAppStore } from './useAppStore';
 
 export type AuthStatus = 'loading' | 'signed_out' | 'signed_in';
@@ -48,20 +49,39 @@ function translateError(message: string): string {
   return message;
 }
 
+/** The syncing repository currently in use, so the UI can watch its queue. */
+let activeSync: SyncingRepository | null = null;
+
+export function getActiveSync(): SyncingRepository | null {
+  return activeSync;
+}
+
 /**
- * Points the repository at the cloud and, on the very first sign-in,
- * uploads whatever the user already built locally so nothing is lost.
+ * Switches to local-first mode against the user's cloud account.
+ *
+ * On the very first sign-in the local save is uploaded so nothing is lost;
+ * otherwise the cloud state is pulled down and becomes the local baseline.
+ * Pending writes from an earlier offline session are flushed first so they
+ * are never overwritten by the pull.
  */
 async function activateCloud(userId: string): Promise<void> {
   const cloud = new SupabaseRepository(supabase!, userId);
+  const sync = new SyncingRepository(localRepository, cloud);
+
+  // Anything queued from before must reach the cloud before we pull.
+  await sync.flush();
+
   const cloudData = await cloud.loadAll();
 
   if (!cloudData.profile) {
     const local = await localRepository.loadAll();
     if (local.profile) await cloud.seed(local);
+  } else if ((await sync.pendingCount()) === 0) {
+    await localRepository.replaceAll(cloudData);
   }
 
-  setActiveRepository(cloud);
+  activeSync = sync;
+  setActiveRepository(sync);
   await useAppStore.getState().init();
 }
 
@@ -88,6 +108,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       } catch (error) {
         // Cloud unreachable – fall back to local so the app still works.
         set({ error: translateError((error as Error).message) });
+        activeSync = null;
         useLocalRepository();
         await useAppStore.getState().init();
       }
@@ -100,6 +121,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         set({ status: 'signed_out', email: null });
+        activeSync = null;
         useLocalRepository();
         void useAppStore.getState().init();
       }
@@ -152,6 +174,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!supabase) return;
     await supabase.auth.signOut();
     set({ status: 'signed_out', email: null, error: null });
+    activeSync = null;
     useLocalRepository();
     await useAppStore.getState().init();
   },

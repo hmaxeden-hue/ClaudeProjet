@@ -6,6 +6,7 @@ import { isCloudConfigured } from '../lib/supabase';
 import { levelFromXp } from '../lib/xp';
 import { FeedbackOverlays } from './FeedbackOverlays';
 import { AuthModal } from './AuthModal';
+import { SyncIndicator } from './SyncIndicator';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '🏠' },
@@ -64,6 +65,7 @@ export function Layout() {
             <span className="hidden rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-slate-300 md:inline">
               {totalXp.toLocaleString('de-DE')} XP
             </span>
+            <SyncIndicator />
             {isCloudConfigured &&
               (authStatus === 'signed_in' ? (
                 <button
