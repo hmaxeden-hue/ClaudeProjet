@@ -1,8 +1,9 @@
-# Cloud-Setup (Konten, Sync und KI-Vorschläge)
+# Cloud-Setup (Konten, Sync, Gruppen und KI-Vorschläge)
 
 Die App läuft **auch ohne dieses Setup** vollständig — dann liegen alle Daten
-lokal im Browser und die KI-Vorschläge sind ausgeblendet. Wer Konten,
-Geräte-Sync und KI-Vorschläge will, richtet einmalig ein Supabase-Projekt ein.
+lokal im Browser, und Gruppen sowie KI-Vorschläge sind ausgeblendet. Wer Konten,
+Geräte-Sync, Gruppen und KI-Vorschläge will, richtet einmalig ein
+Supabase-Projekt ein.
 
 Rechne mit etwa 15 Minuten. Du brauchst dafür kein Terminal.
 
@@ -23,6 +24,11 @@ Rechne mit etwa 15 Minuten. Du brauchst dafür kein Terminal.
 
 Damit entstehen alle Tabellen samt *Row Level Security* — jede Zeile gehört
 genau einem Konto, niemand kann fremde Daten lesen oder schreiben.
+
+Die einzige Ausnahme sind Gruppen: Dort dürfen Mitglieder **eine einzige
+Tabelle** voneinander lesen (`member_stats`), und die enthält nur Name, Level,
+Bereichs-Level und Streak. Aktivitäten, Skills, Ziele und Notizen haben dort gar
+keine Spalte — sie können also auch nicht versehentlich sichtbar werden.
 
 > **Schon eingerichtet?** Wenn neue Felder dazukommen, einfach denselben Inhalt
 > noch einmal ausführen. Die Datei ist so geschrieben, dass mehrfaches Ausführen

@@ -139,6 +139,19 @@ Ausgangspunkt: Wer Spanisch lernt, trainiert dabei auch Kommunikation. Das soll 
 - **Der Bereich geht nie an einem KI-Fehler verloren.** Schlägt der Aufruf fehl, bleibt das Formular mit allen Eingaben stehen und der Bereich lässt sich mit einem Klick ohne Baum anlegen.
 - Die markierten Überschneidungen gehen als Kontext in den Prompt (`overlaps`), damit ein bis zwei Knoten entstehen, die beides gleichzeitig voranbringen.
 
+## Gruppen
+
+Zum ersten Mal verlassen Daten das eigene Konto — entsprechend eng ist der Zuschnitt.
+
+- **Sichtbar sind nur Name, Charakter-Level, Bereichs-Level und Streak.** Nicht sichtbar: Aktivitäten, Skills, Ziele, Ressourcen, Notizen. Das ist keine UI-Entscheidung, sondern eine Datenbank-Entscheidung: Die geteilten Werte liegen in einer **eigenen Tabelle** (`member_stats`), in der es für alles andere schlicht keine Spalte gibt. Ein manipulierter Client kann daher nichts anderes abfragen — die Journal-Tabellen bleiben auf `auth.uid() = user_id` verriegelt. Eine View auf die echten Tabellen wäre bequemer und genau die Konstruktion, bei der ein späterer Spaltenzuwachs unbemerkt Privates mitveröffentlicht.
+- **`statsSnapshot()` ist die einzige Stelle, die entscheidet, was das Konto verlässt** — eine reine Funktion mit einem Test, der auf die Feldliste festnagelt und prüft, dass weder Notizen noch Beschreibungen im Ergebnis auftauchen.
+- **Die Zahlen sind selbst gemeldet.** Jeder Client schreibt seinen eigenen Schnappschuss, fälschen wäre also möglich. Serverseitiges Nachrechnen würde das nicht lösen: Die Grundlage — protokollierte Aktivitäten — ist ohnehin selbst eingetragen. Das hier ist ein Freundeskreis, keine Rangliste mit Preisgeld.
+- **Beitreten läuft über eine `security definer`-Funktion.** Sonst müsste die `groups`-Tabelle für jeden lesbar sein, der einen Code errät. So beantwortet der Server genau eine Frage („gibt es diese Gruppe?") und trägt bei Erfolg die Mitgliedschaft ein; wer daneben rät, erfährt nichts.
+- **RLS-Rekursion vermieden.** Eine Policy auf `group_members`, die `group_members` abfragt, würde sich selbst aufrufen. Die Mitgliedschafts-Prüfungen laufen deshalb als `security definer`-Funktionen, die ausschließlich über den **aufrufenden** Nutzer Auskunft geben.
+- **Kein lokaler Spiegel.** Gruppen sind geteilter Zustand; ein Cache würde fremde Zahlen zeigen, die still veraltet sind, aber verbindlich aussehen. Offline sagt die Seite das klar — der eigene Fortschritt läuft unabhängig davon weiter.
+- **Der Schnappschuss wird nach jeder XP-Vergabe aktualisiert**, im Hintergrund und ohne die Protokollierung aufzuhalten. Schlägt er fehl (offline, abgemeldet), passiert nichts Sichtbares; spätestens beim nächsten Öffnen der Gruppen-Seite ist er wieder aktuell.
+- **Sortiert nach Charakter-Level.** „Gemeinsam leveln" heißt vergleichen können — und weil niemand seine XP-Zahlen selbst wählen kann (siehe XP-System), ist der Vergleich überhaupt erst aussagekräftig. Genau deshalb war die feste XP-Vergabe die Voraussetzung für dieses Feature.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.

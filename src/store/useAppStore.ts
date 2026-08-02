@@ -20,6 +20,8 @@ import { levelFromXp, xpForActivity, xpForNode, type ActivityScope } from '../li
 import { nodeDepths, recomputeNodeStatuses } from '../lib/tree';
 import { currentStreak } from '../lib/streak';
 import { findNewlyUnlocked } from '../lib/achievements';
+import { statsSnapshot } from '../lib/stats';
+import { publishMyStats } from '../data/groups';
 
 export type AppStatus = 'loading' | 'setup' | 'ready';
 
@@ -214,6 +216,13 @@ export const useAppStore = create<AppState>((set, get) => {
 
     for (const { area } of updatedAreas) await repository.saveArea(area);
     await repository.addLog(entry);
+
+    // Let group members see the new numbers. Signed out this does nothing, and
+    // offline it fails – neither may hold up or break logging an activity.
+    const { profile, areas: current, logs } = get();
+    void publishMyStats(statsSnapshot(profile, current, logs)).catch(
+      () => undefined,
+    );
   }
 
   return {
