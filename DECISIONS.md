@@ -122,10 +122,27 @@ Leitsatz: **Der Nutzer beschreibt, was er getan hat — das System bestimmt den 
 - **Auch KI und Vorlagen dürfen nicht bepreisen.** Beim Zusammenbau eines Baums wird `xpReward` grundsätzlich neu berechnet — ein vom Modell vorgeschlagener Wert wird verworfen. Sonst hinge die Ökonomie an der Tageslaune eines Sprachmodells.
 - **Keine rückwirkende Änderung.** Beim Speichern wird nur der bearbeitete Knoten neu bepreist; bereits vergebene Belohnungen und alte Log-Einträge bleiben, wie sie waren. Historische XP aus der Zeit der freien Eingabe werden also nicht umgerechnet — das würde Level ohne Zutun des Nutzers verschieben.
 
+## Überschneidende Themen („XP für zwei Sachen")
+
+Ausgangspunkt: Wer Spanisch lernt, trainiert dabei auch Kommunikation. Das soll sich nicht zwischen zwei Bereichen entscheiden müssen.
+
+- **Eine Aktivität, ein Eintrag, mehrere Bereiche.** `LogEntry` bekommt `secondaryAreaIds`; jeder beteiligte Bereich erhält die **vollen** XP. Die Alternative — die XP aufteilen — wurde verworfen: Ein Gespräch auf Spanisch ist keine halbe Spanisch-Übung, und geteilte XP hätten das Feature bestraft statt belohnt. Kein Duplizieren des Eintrags, sonst zählt der Verlauf dieselbe Sache mehrfach.
+- **Missbrauch wird über den Zuschnitt begrenzt, nicht über Regeln.** Maximal zwei Zusatzbereiche pro Aktivität. Wer alles überall anhakt, hebt sein Charakter-Level — aber alle Bereichs-Level steigen dann gleichmäßig, was den Vergleich zwischen Bereichen (der eigentliche Nutzen) selbst entwertet. Eine harte Prüfung, ob eine Überschneidung „echt" ist, kann die App nicht leisten.
+- **Überschneidung gehört zum Bereich, nicht zur einzelnen Aktivität.** Ein selbst angelegter Bereich kann bis zu zwei bestehende als überlappend markieren (`Area.linkedAreaIds`); beim Protokollieren sind diese dann **vorausgewählt**. Sonst müsste man sich bei jedem Eintrag neu erinnern — genau das würde das Feature im Alltag versanden lassen. Übersteuern bleibt jederzeit möglich.
+- **Nur eine Level-Up-Feier pro Aktivität.** Steigen mehrere Bereiche gleichzeitig, wird der erste gefeiert; mehrere Vollbild-Overlays hintereinander wären Lärm. Der XP-Toast zeigt stattdessen `× N`.
+- **Löschen lässt keine Leichen zurück.** Wird ein Bereich gelöscht, verlieren fremde Log-Einträge nur diesen Bereich (der Eintrag selbst gehört ja dem anderen) und andere Bereiche verlieren ihn aus ihrer Überschneidungsliste.
+
+## Eigene Themen mit KI-Baum
+
+- Ein neuer Bereich kann sich seinen Baum direkt beim Anlegen von der KI entwerfen lassen — dieselbe Funktion und derselbe Zusammenbau wie im Onboarding (`buildCustomArea` teilt `materializeNodes` mit `generateSetup`). Damit ist ein später ergänztes „Spanisch" exakt so bepreist und eingestuft wie die fünf Kernbereiche; eine zweite, abweichende Pricing-Logik wäre der wahrscheinlichste Weg, das XP-System wieder zu zerlegen.
+- Die Frage nach dem Erfahrungsstand bleibt auch hier drin: Wer schon Grundlagen hat, startet nicht bei null.
+- **Der Bereich geht nie an einem KI-Fehler verloren.** Schlägt der Aufruf fehl, bleibt das Formular mit allen Eingaben stehen und der Bereich lässt sich mit einem Klick ohne Baum anlegen.
+- Die markierten Überschneidungen gehen als Kontext in den Prompt (`overlaps`), damit ein bis zwei Knoten entstehen, die beides gleichzeitig voranbringen.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.
 - Log-Einträge löschen entfernt die XP **nicht** rückwirkend (Logs sind Journal, keine Buchhaltung). Store-API `deleteLog` existiert, ist aber bewusst nicht prominent in der UI.
-- Getestet sind bislang nur Outbox und Sync (die riskantesten Teile). Die übrigen Logik-Kerne (`lib/xp.ts`, `lib/tree.ts`, `lib/streak.ts`, `lib/achievements.ts`, `data/onboarding.ts`) sind als reine Funktionen geschnitten und ebenso leicht testbar; verifiziert wurden sie bisher über Browser-Durchläufe.
+- Getestet sind Outbox, Sync, XP-Kurve, Baum-Zusammenbau und die Mehrfach-Bereichs-Vergabe im Store. `lib/tree.ts`, `lib/streak.ts` und `lib/achievements.ts` sind als reine Funktionen geschnitten und ebenso leicht testbar; verifiziert wurden sie bisher über Browser-Durchläufe.
 - Das Onboarding lässt sich nach dem Abschluss nicht erneut starten – der Baum wird stattdessen manuell weiter bearbeitet. Ein „Baum zurücksetzen" wäre ein eigenes Feature.
 - Phase 3: KI-Vorschläge (Anthropic API), Accounts + Sync – Repository-Interface ist dafür vorbereitet.

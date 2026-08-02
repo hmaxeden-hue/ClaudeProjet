@@ -35,6 +35,7 @@ const toArea = (r: Row): Area => ({
   sortOrder: (r.sort_order as number) ?? 0,
   isCustom: Boolean(r.is_custom),
   suggestedActivities: (r.suggested_activities as Area['suggestedActivities']) ?? [],
+  linkedAreaIds: (r.linked_area_ids as string[]) ?? undefined,
 });
 
 const fromArea = (a: Area, userId: string): Row => ({
@@ -48,6 +49,7 @@ const fromArea = (a: Area, userId: string): Row => ({
   sort_order: a.sortOrder,
   is_custom: a.isCustom,
   suggested_activities: a.suggestedActivities,
+  linked_area_ids: a.linkedAreaIds ?? [],
 });
 
 const toNode = (r: Row): SkillNode => ({
@@ -75,23 +77,30 @@ const fromNode = (n: SkillNode, userId: string): Row => ({
   completed_at: n.completedAt ?? null,
 });
 
-const toLog = (r: Row): LogEntry => ({
-  id: r.id as string,
-  areaId: r.area_id as string,
-  nodeId: (r.node_id as string) ?? undefined,
-  description: r.description as string,
-  xp: (r.xp as number) ?? 0,
-  timestamp: r.timestamp as string,
-});
+const toLog = (r: Row): LogEntry => {
+  const secondary = (r.secondary_area_ids as string[]) ?? [];
+  return {
+    id: r.id as string,
+    areaId: r.area_id as string,
+    secondaryAreaIds: secondary.length > 0 ? secondary : undefined,
+    nodeId: (r.node_id as string) ?? undefined,
+    description: r.description as string,
+    xp: (r.xp as number) ?? 0,
+    timestamp: r.timestamp as string,
+    scope: (r.scope as LogEntry['scope']) ?? undefined,
+  };
+};
 
 const fromLog = (l: LogEntry, userId: string): Row => ({
   user_id: userId,
   id: l.id,
   area_id: l.areaId,
+  secondary_area_ids: l.secondaryAreaIds ?? [],
   node_id: l.nodeId ?? null,
   description: l.description,
   xp: l.xp,
   timestamp: l.timestamp,
+  scope: l.scope ?? null,
 });
 
 const toGoal = (r: Row): Goal => ({
@@ -101,6 +110,7 @@ const toGoal = (r: Row): Goal => ({
   description: (r.description as string) ?? '',
   targetDate: (r.target_date as string) ?? undefined,
   status: r.status as Goal['status'],
+  size: (r.size as Goal['size']) ?? undefined,
   xpReward: (r.xp_reward as number) ?? 0,
   achievedAt: (r.achieved_at as string) ?? undefined,
 });
@@ -113,6 +123,7 @@ const fromGoal = (g: Goal, userId: string): Row => ({
   description: g.description,
   target_date: g.targetDate ?? null,
   status: g.status,
+  size: g.size ?? null,
   xp_reward: g.xpReward,
   achieved_at: g.achievedAt ?? null,
 });

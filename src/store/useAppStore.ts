@@ -11,6 +11,7 @@ import type {
 import { repository } from '../data/repository';
 import {
   generateSetup,
+  type BuiltArea,
   type OnboardingAnswers,
   type ResolvedNode,
 } from '../data/onboarding';
@@ -26,6 +27,8 @@ export interface XpToast {
   id: number;
   amount: number;
   color: string;
+  /** How many areas received the reward – shown when it counted more than once. */
+  areaCount: number;
 }
 
 export interface LevelUpEvent {
@@ -69,6 +72,8 @@ interface AppState {
 
   logActivity: (input: {
     areaId: string;
+    /** Further areas the activity also counts for; each gets the full reward. */
+    secondaryAreaIds?: string[];
     nodeId?: string;
     description: string;
     /** Catalog value of the activity; the reward is derived from it. */
@@ -86,6 +91,8 @@ interface AppState {
   deleteNode: (nodeId: string) => Promise<void>;
 
   saveArea: (area: Area) => Promise<void>;
+  /** Adds a self-created area together with its generated tree and goal. */
+  addAreaWithTree: (built: BuiltArea) => Promise<void>;
   deleteArea: (areaId: string) => Promise<void>;
 
   saveGoal: (goal: Goal) => Promise<void>;
@@ -138,23 +145,35 @@ export const useAppStore = create<AppState>((set, get) => {
    * the XP toast / level-up feedback. Central path for every XP source.
    */
   async function gainXp(input: {
-    areaId: string;
+    /** First entry is the primary area; every listed area receives the reward. */
+    areaIds: string[];
     nodeId?: string;
     description: string;
     xp: number;
     scope?: ActivityScope;
   }): Promise<void> {
     const { areas } = get();
-    const area = areas.find((a) => a.id === input.areaId);
-    if (!area) return;
+    const credited = input.areaIds
+      .map((id) => areas.find((a) => a.id === id))
+      .filter((a): a is Area => Boolean(a));
+    if (credited.length === 0) return;
 
-    const levelBefore = levelFromXp(area.xp);
-    const updatedArea: Area = { ...area, xp: area.xp + input.xp };
-    const levelAfter = levelFromXp(updatedArea.xp);
+    const updatedAreas = credited.map((area) => ({
+      before: levelFromXp(area.xp),
+      area: { ...area, xp: area.xp + input.xp } as Area,
+    }));
+
+    // Celebrate the first area that gained a level; the rest is visible on the
+    // dashboard. Queueing several full-screen overlays would be noise.
+    const levelled = updatedAreas.find(
+      ({ area, before }) => levelFromXp(area.xp) > before,
+    );
 
     const entry: LogEntry = {
       id: createId(),
-      areaId: input.areaId,
+      areaId: credited[0].id,
+      secondaryAreaIds:
+        credited.length > 1 ? credited.slice(1).map((a) => a.id) : undefined,
       nodeId: input.nodeId,
       description: input.description,
       xp: input.xp,
@@ -163,20 +182,25 @@ export const useAppStore = create<AppState>((set, get) => {
     };
 
     const feedbackId = ++feedbackCounter;
+    const byId = new Map(updatedAreas.map(({ area }) => [area.id, area]));
     set((state) => ({
-      areas: state.areas.map((a) => (a.id === updatedArea.id ? updatedArea : a)),
+      areas: state.areas.map((a) => byId.get(a.id) ?? a),
       logs: [entry, ...state.logs],
-      xpToast: { id: feedbackId, amount: input.xp, color: area.color },
-      levelUp:
-        levelAfter > levelBefore
-          ? {
-              id: feedbackId,
-              areaName: area.name,
-              areaIcon: area.icon,
-              color: area.color,
-              level: levelAfter,
-            }
-          : get().levelUp,
+      xpToast: {
+        id: feedbackId,
+        amount: input.xp,
+        color: credited[0].color,
+        areaCount: credited.length,
+      },
+      levelUp: levelled
+        ? {
+            id: feedbackId,
+            areaName: levelled.area.name,
+            areaIcon: levelled.area.icon,
+            color: levelled.area.color,
+            level: levelFromXp(levelled.area.xp),
+          }
+        : get().levelUp,
     }));
 
     // Auto-dismiss feedback after a short moment.
@@ -188,7 +212,7 @@ export const useAppStore = create<AppState>((set, get) => {
       });
     }, 3200);
 
-    await repository.saveArea(updatedArea);
+    for (const { area } of updatedAreas) await repository.saveArea(area);
     await repository.addLog(entry);
   }
 
@@ -253,9 +277,19 @@ export const useAppStore = create<AppState>((set, get) => {
       await checkAchievements();
     },
 
-    logActivity: async ({ areaId, nodeId, description, baseXp, scope }) => {
+    logActivity: async ({
+      areaId,
+      secondaryAreaIds = [],
+      nodeId,
+      description,
+      baseXp,
+      scope,
+    }) => {
+      const unique = Array.from(
+        new Set([areaId, ...secondaryAreaIds.filter(Boolean)]),
+      );
       await gainXp({
-        areaId,
+        areaIds: unique,
         nodeId,
         description,
         scope,
@@ -285,7 +319,7 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ nodes: updatedNodes });
       await repository.saveNodes(updatedNodes);
       await gainXp({
-        areaId: node.areaId,
+        areaIds: [node.areaId],
         nodeId: node.id,
         description: `Skill abgeschlossen: ${node.title}`,
         xp: node.xpReward,
@@ -352,15 +386,59 @@ export const useAppStore = create<AppState>((set, get) => {
       await checkAchievements();
     },
 
+    addAreaWithTree: async ({ area, nodes, goals, logs }) => {
+      set((state) => {
+        const areas = [...state.areas, area].sort(
+          (a, b) => a.sortOrder - b.sortOrder,
+        );
+        return {
+          areas,
+          nodes: [...state.nodes, ...nodes],
+          goals: [...state.goals, ...goals],
+          logs: [...logs, ...state.logs],
+        };
+      });
+      await repository.saveArea(area);
+      await repository.saveNodes(nodes);
+      for (const goal of goals) await repository.saveGoal(goal);
+      for (const log of logs) await repository.addLog(log);
+      await checkAchievements();
+    },
+
     deleteArea: async (areaId) => {
+      const { areas, logs } = get();
+      // An activity that also counted elsewhere stays – it just loses this
+      // area. Same for areas that listed the deleted one as overlapping.
+      const orphanedLogs = logs
+        .filter((l) => l.areaId !== areaId && l.secondaryAreaIds?.includes(areaId))
+        .map((l) => ({
+          ...l,
+          secondaryAreaIds: l.secondaryAreaIds!.filter((id) => id !== areaId),
+        }));
+      const unlinkedAreas = areas
+        .filter((a) => a.id !== areaId && a.linkedAreaIds?.includes(areaId))
+        .map((a) => ({
+          ...a,
+          linkedAreaIds: a.linkedAreaIds!.filter((id) => id !== areaId),
+        }));
+
+      const byId = new Map<string, LogEntry>(orphanedLogs.map((l) => [l.id, l]));
+      const areaById = new Map(unlinkedAreas.map((a) => [a.id, a]));
       set((state) => ({
-        areas: state.areas.filter((a) => a.id !== areaId),
+        areas: state.areas
+          .filter((a) => a.id !== areaId)
+          .map((a) => areaById.get(a.id) ?? a),
         nodes: state.nodes.filter((n) => n.areaId !== areaId),
-        logs: state.logs.filter((l) => l.areaId !== areaId),
+        logs: state.logs
+          .filter((l) => l.areaId !== areaId)
+          .map((l) => byId.get(l.id) ?? l),
         goals: state.goals.filter((g) => g.areaId !== areaId),
         resources: state.resources.filter((r) => r.areaId !== areaId),
       }));
+
       await repository.deleteArea(areaId);
+      for (const log of orphanedLogs) await repository.addLog(log);
+      for (const area of unlinkedAreas) await repository.saveArea(area);
     },
 
     saveGoal: async (goal) => {
@@ -388,7 +466,7 @@ export const useAppStore = create<AppState>((set, get) => {
       }));
       await repository.saveGoal(achieved);
       await gainXp({
-        areaId: goal.areaId,
+        areaIds: [goal.areaId],
         description: `Ziel erreicht: ${goal.title}`,
         xp: goal.xpReward,
       });
@@ -427,7 +505,7 @@ export const useAppStore = create<AppState>((set, get) => {
       // Award XP only on the first transition to done.
       if (status === 'done' && !wasDone) {
         await gainXp({
-          areaId: resource.areaId,
+          areaIds: [resource.areaId],
           nodeId: resource.nodeId,
           description: `Ressource abgeschlossen: ${resource.title}`,
           xp: RESOURCE_XP[resource.type],

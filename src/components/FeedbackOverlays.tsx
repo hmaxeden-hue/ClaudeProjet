@@ -38,6 +38,11 @@ export function FeedbackOverlays() {
             }}
           >
             +{xpToast.amount} XP
+            {xpToast.areaCount > 1 && (
+              <span className="ml-1 text-sm font-semibold opacity-80">
+                × {xpToast.areaCount}
+              </span>
+            )}
           </span>
         </div>
       )}

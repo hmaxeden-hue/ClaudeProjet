@@ -8,6 +8,8 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 - **Installierbar als App** (PWA): eigenes Icon, Start ohne Browserleiste, funktioniert auch ohne Netz
 - **Offline-fähig**: Änderungen werden immer sofort lokal gespeichert und automatisch hochgeladen, sobald wieder Verbindung besteht
 - **Konten & Cloud-Sync** (optional): angemeldet teilen Handy und Desktop denselben Spielstand; ohne Konto läuft alles rein lokal weiter
+- **Eigene Themen mit KI-Baum**: „Spanisch" anlegen, Erfahrungsstand und Ziel angeben – der Skill-Tree dafür entsteht direkt beim Anlegen
+- **Überschneidende Bereiche**: eine Aktivität kann für mehrere Bereiche zählen und gibt jedem die **vollen** XP – Spanisch sprechen trainiert eben auch Kommunikation. Überschneidungen werden am Bereich hinterlegt und sind beim Protokollieren vorausgewählt
 - **KI-generierter Start-Baum**: im Onboarding entwirft die KI aus deinen Antworten für jeden Bereich einen eigenen Baum – mit Verzweigungen statt einer Kette
 - **KI-Vorschläge** für neue Skills, passend zu Level, Baum und Zielen – der API-Schlüssel bleibt serverseitig
 - **Onboarding-Fragebogen**, der aus deinen Antworten (Erfahrungsstand, Fokus, Ziele) einen **personalisierten Skill-Tree** pro Bereich generiert – wer schon weit ist, startet mit entsprechendem Level statt bei null

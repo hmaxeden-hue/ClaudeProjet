@@ -28,6 +28,11 @@ export interface Area {
   /** True for user-created areas (they can be deleted). */
   isCustom: boolean;
   suggestedActivities: SuggestedActivity[];
+  /**
+   * Areas this one overlaps with. Learning Spanish also trains communication,
+   * so activities logged here pre-select those areas and credit them too.
+   */
+  linkedAreaIds?: string[];
 }
 
 export type NodeStatus = 'locked' | 'available' | 'completed';
@@ -48,7 +53,14 @@ export interface SkillNode {
 
 export interface LogEntry {
   id: string;
+  /** The area this was primarily logged for. */
   areaId: string;
+  /**
+   * Further areas the same activity counted for. One activity can genuinely
+   * advance several areas – speaking Spanish with someone trains the language
+   * *and* communication – so each of them receives the full reward.
+   */
+  secondaryAreaIds?: string[];
   nodeId?: string;
   description: string;
   xp: number;
