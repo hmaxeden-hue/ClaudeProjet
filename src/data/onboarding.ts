@@ -7,7 +7,8 @@ import type {
   SuggestedActivity,
 } from '../types/models';
 import { createId } from '../lib/id';
-import { recomputeNodeStatuses } from '../lib/tree';
+import { nodeDepths, recomputeNodeStatuses } from '../lib/tree';
+import { GOAL_XP, xpForNode } from '../lib/xp';
 
 /**
  * Onboarding catalog: per area a set of questions plus a pool of node
@@ -831,24 +832,29 @@ function assembleArea(
   const completedThroughStage = option?.completedThroughStage ?? -1;
 
   const idByKey = new Map(resolved.map((n) => [n.key, createId()]));
-  let startingXp = 0;
 
-  const nodes: SkillNode[] = resolved.map((n) => {
-    const isCompleted = n.stage <= completedThroughStage;
-    if (isCompleted) startingXp += n.xpReward;
-    return {
-      id: idByKey.get(n.key)!,
-      areaId: config.areaId,
-      title: n.title,
-      description: n.description,
-      prerequisites: n.prerequisites
-        .filter((k) => idByKey.has(k))
-        .map((k) => idByKey.get(k)!),
-      xpReward: n.xpReward,
-      status: isCompleted ? 'completed' : 'locked',
-      type: n.type,
-      completedAt: isCompleted ? now : undefined,
-    };
+  const nodes: SkillNode[] = resolved.map((n) => ({
+    id: idByKey.get(n.key)!,
+    areaId: config.areaId,
+    title: n.title,
+    description: n.description,
+    prerequisites: n.prerequisites
+      .filter((k) => idByKey.has(k))
+      .map((k) => idByKey.get(k)!),
+    // Placeholder – replaced below once the real depths are known.
+    xpReward: 0,
+    status: n.stage <= completedThroughStage ? 'completed' : 'locked',
+    type: n.type,
+    completedAt: n.stage <= completedThroughStage ? now : undefined,
+  }));
+
+  // Rewards follow the same rule as everywhere else: kind plus depth in the
+  // finished tree. Neither the templates nor the AI get to set a number.
+  const depths = nodeDepths(nodes);
+  let startingXp = 0;
+  nodes.forEach((node) => {
+    node.xpReward = xpForNode(node.type, depths.get(node.id) ?? 0);
+    if (node.status === 'completed') startingXp += node.xpReward;
   });
 
   const goals: Goal[] = [];
@@ -860,7 +866,8 @@ function assembleArea(
       title: goalText,
       description: 'Aus dem Onboarding übernommen.',
       status: 'open',
-      xpReward: 100,
+      size: 'medium',
+      xpReward: GOAL_XP.medium,
     });
   }
 

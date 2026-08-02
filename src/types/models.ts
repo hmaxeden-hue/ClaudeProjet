@@ -53,6 +53,8 @@ export interface LogEntry {
   description: string;
   xp: number;
   timestamp: string;
+  /** How much was done – kept for the record, XP is derived from it. */
+  scope?: 'small' | 'normal' | 'large';
 }
 
 export type GoalStatus = 'open' | 'achieved';
@@ -64,6 +66,8 @@ export interface Goal {
   description: string;
   targetDate?: string;
   status: GoalStatus;
+  /** Effort class chosen by the user; the reward follows from it. */
+  size?: 'small' | 'medium' | 'large';
   xpReward: number;
   achievedAt?: string;
 }

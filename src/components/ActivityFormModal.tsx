@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import {
+  ACTIVITY_SCOPES,
+  GENERIC_ACTIVITIES,
+  SCOPE_META,
+  xpForActivity,
+  type ActivityScope,
+} from '../lib/xp';
 import { Modal } from './Modal';
-
-const XP_PRESETS = [10, 25, 50, 100];
 
 interface ActivityFormModalProps {
   /** Pre-selected area (e.g. when opened from an area page). */
@@ -20,22 +25,40 @@ export function ActivityFormModal({
 
   const [areaId, setAreaId] = useState(initialAreaId ?? areas[0]?.id ?? '');
   const [nodeId, setNodeId] = useState('');
-  const [description, setDescription] = useState('');
-  const [xp, setXp] = useState(25);
+  const [activityIndex, setActivityIndex] = useState(0);
+  const [note, setNote] = useState('');
+  const [scope, setScope] = useState<ActivityScope>('normal');
 
   const area = areas.find((a) => a.id === areaId);
+
+  // Areas created before the catalog existed fall back to the generic one.
+  const catalog = useMemo(
+    () =>
+      area && area.suggestedActivities.length > 0
+        ? area.suggestedActivities
+        : GENERIC_ACTIVITIES,
+    [area],
+  );
+
+  const activity = catalog[Math.min(activityIndex, catalog.length - 1)];
+  const xp = activity ? xpForActivity(activity.xp, scope) : 0;
+
   const areaNodes = useMemo(
     () => nodes.filter((n) => n.areaId === areaId && n.status !== 'completed'),
     [nodes, areaId],
   );
 
   const submit = async () => {
-    if (!areaId || !description.trim() || xp <= 0) return;
+    if (!areaId || !activity) return;
+    const description = note.trim()
+      ? `${activity.label} – ${note.trim()}`
+      : activity.label;
     await logActivity({
       areaId,
       nodeId: nodeId || undefined,
-      description: description.trim(),
-      xp,
+      description,
+      scope,
+      baseXp: activity.xp,
     });
     onClose();
   };
@@ -56,6 +79,7 @@ export function ActivityFormModal({
             onChange={(e) => {
               setAreaId(e.target.value);
               setNodeId('');
+              setActivityIndex(0);
             }}
             className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
           >
@@ -67,41 +91,78 @@ export function ActivityFormModal({
           </select>
         </label>
 
-        {area && area.suggestedActivities.length > 0 && (
-          <div>
-            <span className="text-xs text-slate-400">Schnellauswahl</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {area.suggestedActivities.map((s) => (
+        <div>
+          <span className="text-sm font-medium text-slate-300">
+            Was hast du gemacht?
+          </span>
+          <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+            {catalog.map((entry, index) => {
+              const selected = index === activityIndex;
+              return (
                 <button
-                  key={s.label}
+                  key={entry.label}
                   type="button"
-                  onClick={() => {
-                    setDescription(s.label);
-                    setXp(s.xp);
+                  onClick={() => setActivityIndex(index)}
+                  className="rounded-lg border px-3 py-2 text-left text-sm transition"
+                  style={{
+                    borderColor: selected ? (area?.color ?? '#38bdf8') : '#334155',
+                    backgroundColor: selected
+                      ? `${area?.color ?? '#38bdf8'}14`
+                      : 'transparent',
                   }}
-                  className="rounded-full border border-slate-700 bg-slate-800/60 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
                 >
-                  {s.label} · {s.xp} XP
+                  {entry.label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        <div>
+          <span className="text-sm font-medium text-slate-300">Umfang</span>
+          <div className="mt-1.5 grid grid-cols-3 gap-2">
+            {ACTIVITY_SCOPES.map((value) => {
+              const selected = value === scope;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setScope(value)}
+                  className="rounded-lg border px-2 py-2 text-center transition"
+                  style={{
+                    borderColor: selected ? (area?.color ?? '#38bdf8') : '#334155',
+                    backgroundColor: selected
+                      ? `${area?.color ?? '#38bdf8'}14`
+                      : 'transparent',
+                  }}
+                >
+                  <div className="text-sm font-semibold">
+                    {SCOPE_META[value].label}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {SCOPE_META[value].hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <label className="block text-sm font-medium text-slate-300">
-          Was hast du gemacht?
+          Notiz
+          <span className="ml-1 font-normal text-slate-500">(optional)</span>
           <input
-            autoFocus
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="z. B. 30 Minuten gelesen"
-            className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="z. B. Kapitel 4–6"
+            className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm placeholder-slate-600 focus:border-sky-500 focus:outline-none"
           />
         </label>
 
         {areaNodes.length > 0 && (
           <label className="block text-sm font-medium text-slate-300">
-            Gehört zu Skill (optional)
+            Gehört zu Skill
+            <span className="ml-1 font-normal text-slate-500">(optional)</span>
             <select
               value={nodeId}
               onChange={(e) => setNodeId(e.target.value)}
@@ -117,42 +178,19 @@ export function ActivityFormModal({
           </label>
         )}
 
-        <div>
-          <span className="text-sm font-medium text-slate-300">XP</span>
-          <div className="mt-1.5 flex items-center gap-2">
-            {XP_PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setXp(preset)}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
-                  xp === preset
-                    ? 'border-sky-400 bg-sky-400/10 text-sky-300'
-                    : 'border-slate-700 text-slate-300 hover:border-slate-500'
-                }`}
-              >
-                {preset}
-              </button>
-            ))}
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={xp}
-              onChange={(e) => setXp(Number(e.target.value))}
-              aria-label="Eigene XP"
-              className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none"
-            />
-          </div>
-        </div>
-
         <button
           type="submit"
-          className="w-full rounded-lg py-2.5 font-bold text-slate-950 transition hover:brightness-110"
+          disabled={!activity}
+          className="w-full rounded-lg py-2.5 font-bold text-slate-950 transition hover:brightness-110 disabled:opacity-40"
           style={{ backgroundColor: area?.color ?? '#38bdf8' }}
         >
           +{xp} XP protokollieren
         </button>
+
+        <p className="text-center text-xs text-slate-500">
+          Die XP ergeben sich aus Aktivität und Umfang — so bleiben Level
+          zwischen Bereichen und über die Zeit vergleichbar.
+        </p>
       </form>
     </Modal>
   );

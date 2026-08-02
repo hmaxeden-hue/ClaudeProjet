@@ -15,8 +15,8 @@ import {
   type ResolvedNode,
 } from '../data/onboarding';
 import { createId } from '../lib/id';
-import { levelFromXp } from '../lib/xp';
-import { recomputeNodeStatuses } from '../lib/tree';
+import { levelFromXp, xpForActivity, xpForNode, type ActivityScope } from '../lib/xp';
+import { nodeDepths, recomputeNodeStatuses } from '../lib/tree';
 import { currentStreak } from '../lib/streak';
 import { findNewlyUnlocked } from '../lib/achievements';
 
@@ -43,8 +43,6 @@ export const RESOURCE_XP: Record<Resource['type'], number> = {
   course: 150,
   other: 40,
 };
-
-export const DEFAULT_GOAL_XP = 100;
 
 interface AppState {
   status: AppStatus;
@@ -73,13 +71,17 @@ interface AppState {
     areaId: string;
     nodeId?: string;
     description: string;
-    xp: number;
+    /** Catalog value of the activity; the reward is derived from it. */
+    baseXp: number;
+    scope: ActivityScope;
   }) => Promise<void>;
   deleteLog: (logId: string) => Promise<void>;
 
   completeNode: (nodeId: string) => Promise<void>;
   saveNode: (
-    node: Omit<SkillNode, 'status'> & { status?: SkillNode['status'] },
+    node: Omit<SkillNode, 'status' | 'xpReward'> & {
+      status?: SkillNode['status'];
+    },
   ) => Promise<void>;
   deleteNode: (nodeId: string) => Promise<void>;
 
@@ -140,6 +142,7 @@ export const useAppStore = create<AppState>((set, get) => {
     nodeId?: string;
     description: string;
     xp: number;
+    scope?: ActivityScope;
   }): Promise<void> {
     const { areas } = get();
     const area = areas.find((a) => a.id === input.areaId);
@@ -156,6 +159,7 @@ export const useAppStore = create<AppState>((set, get) => {
       description: input.description,
       xp: input.xp,
       timestamp: new Date().toISOString(),
+      scope: input.scope,
     };
 
     const feedbackId = ++feedbackCounter;
@@ -249,8 +253,14 @@ export const useAppStore = create<AppState>((set, get) => {
       await checkAchievements();
     },
 
-    logActivity: async (input) => {
-      await gainXp(input);
+    logActivity: async ({ areaId, nodeId, description, baseXp, scope }) => {
+      await gainXp({
+        areaId,
+        nodeId,
+        description,
+        scope,
+        xp: xpForActivity(baseXp, scope),
+      });
       await checkAchievements();
     },
 
@@ -286,8 +296,23 @@ export const useAppStore = create<AppState>((set, get) => {
     saveNode: async (input) => {
       const { nodes } = get();
       const existing = nodes.find((n) => n.id === input.id);
+
+      // The reward follows from kind and depth – only the node being saved is
+      // repriced, so already-earned rewards never change retroactively.
+      const areaNodes = nodes.filter(
+        (n) => n.areaId === input.areaId && n.id !== input.id,
+      );
+      const depths = nodeDepths(areaNodes);
+      const depth =
+        input.prerequisites.length === 0
+          ? 0
+          : Math.max(
+              ...input.prerequisites.map((id) => (depths.get(id) ?? 0) + 1),
+            );
+
       const node: SkillNode = {
         ...input,
+        xpReward: xpForNode(input.type, depth),
         status: input.status ?? existing?.status ?? 'locked',
       };
       const merged = existing

@@ -15,7 +15,7 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 - `xpForLevel(n) = round(100 * n^1.5)` = XP, um von Level *n* auf *n+1* zu kommen. Level starten bei 1, kein Cap.
 - Pro Bereich wird nur die **Gesamt-XP gespeichert**; das Level wird immer daraus abgeleitet (eine Quelle der Wahrheit, kein Drift).
 - **Charakter-Level = Summe der Bereichslevel.** Gewählt statt Durchschnitt, weil es sich nach RPG-Fortschritt anfühlt: jeder Bereich zahlt sichtbar aufs Gesamtlevel ein, und ein neuer Bereich senkt nie das Charakter-Level.
-- XP-Quellen: Aktivitäten (frei wählbare XP, Presets 10/25/50/100), Knoten abschließen (`xpReward`), Ziele erreichen (`xpReward`, Default 100), Ressourcen abschließen (fix je Typ: Buch 100, Video 25, Kurs 150, Sonstiges 40 – nur beim ersten Wechsel auf „Fertig").
+- XP-Quellen: Aktivitäten, Knoten abschließen, Ziele erreichen, Ressourcen abschließen (fix je Typ: Buch 100, Video 25, Kurs 150, Sonstiges 40 – nur beim ersten Wechsel auf „Fertig").
 - Jede XP-Vergabe erzeugt automatisch einen Log-Eintrag – das Log ist das vollständige „Journal" des Fortschritts.
 
 ## Datenmodell
@@ -42,7 +42,7 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 - **Generator statt fixem Seed** (`src/data/onboarding.ts`): Jeder Bereich hat einen Pool von Knoten-Templates mit `stage` (0 = Grundlage … 3 = Meisterschaft) und optionalem `requiresTag`. Tag-gebundene Templates landen nur im Baum, wenn der passende Fokus gewählt wurde – dadurch bekommt jede Person einen anderen Baum. Templates sind rein deklarativ, damit Phase 3 sie später durch KI-generierte Knoten ersetzen kann, ohne die Generator-Logik anzufassen.
 - Prerequisites in Templates sind lokale Keys; beim Generieren werden echte ids vergeben und Verweise auf herausgefilterte Templates entfernt. So bleibt der Baum immer konsistent.
 - **Erfahrungsstand wird als bereits erledigter Fortschritt abgebildet:** Knoten unterhalb des angegebenen Stands starten `completed`, ihre XP zählen als Start-XP, und pro Bereich wird ein Log-Eintrag „Bestehender Fortschritt aus dem Onboarding" geschrieben. Wer sagt „ich trainiere regelmäßig", startet in Gesundheit also nicht bei Level 1. Alternative wäre gewesen, frühe Knoten wegzulassen – dann fehlt aber die sichtbare Historie im Baum.
-- Freitext-Ziele werden direkt als `Goal` mit 100 XP angelegt.
+- Freitext-Ziele werden direkt als `Goal` angelegt (Größenklasse „mittel“).
 
 ### Achievements / Badges
 
@@ -110,6 +110,17 @@ Kurzes Protokoll der Design- und Technik-Entscheidungen für Phase 1 (MVP).
 - **Acyclicity wird nicht erhofft, sondern erzwungen.** `sanitizeAiNodes` behält eine Voraussetzung nur, wenn sie auf einen **weiter oben in der Liste** definierten Knoten zeigt. Ein Modell, das einen Key erfindet, auf sich selbst zeigt oder einen Kreis baut, kann deshalb keinen Baum mit unerreichbaren Knoten erzeugen. Unplausible Werte (XP, stage, type) werden auf den nächstliegenden gültigen Wert gezogen, statt den Knoten zu verwerfen.
 - **Vorlagen und KI teilen den Zusammenbau.** Beide Pfade erzeugen `ResolvedNode[]`, danach ist der Code identisch — inklusive der Regel, dass Knoten unterhalb des angegebenen Erfahrungsstands als bereits erledigt starten. Das Feature „du startest auf deinem echten Level" gilt damit auch für KI-Bäume.
 - Das Modell bekommt `stage` als Ordnungsprinzip vorgegeben (0 = Grundlage … 3 = Meisterschaft) und wird angewiesen, **Verzweigungen statt einer Kette** zu bauen — sonst entsteht regelmäßig ein linearer Strang, der die Baum-Darstellung sinnlos macht.
+
+## XP-System (fest statt frei wählbar)
+
+Leitsatz: **Der Nutzer beschreibt, was er getan hat — das System bestimmt den Wert.** Frei eingetippte Zahlen machen Level unvergleichbar (zwischen Bereichen, über die Zeit, zwischen Personen) und wären mit Gruppen vollends wertlos. An keiner Stelle der App lässt sich noch eine XP-Zahl eingeben.
+
+- **Aktivitäten:** Auswahl aus dem Katalog des Bereichs plus eine Umfangsstufe (`kurz` ×0,5 / `normal` ×1 / `ausgiebig` ×2). Der Katalogwert bildet den typischen Aufwand ab, die Stufe die konkrete Ausprägung. Untergrenze 5 XP, damit nichts wertlos wird. Bereiche ohne eigenen Katalog (selbst angelegte) bekommen einen generischen.
+- **Knoten:** `Typ + Tiefe im Baum`. Quest 50 / Gewohnheit 75 / Meilenstein 125, plus 25 je Ebene — wer tiefer im Baum steht, musste mehr Voraussetzungen abräumen. Die Tiefe ist bei 6 gedeckelt, sonst könnte eine künstlich lange Kette die Belohnungen beliebig hochtreiben.
+- **Ziele:** Größenklasse statt Zahl (klein 100 / mittel 250 / groß 500). Auch hier klassifiziert der Nutzer, das System bepreist.
+- **Ressourcen:** unverändert fest je Typ.
+- **Auch KI und Vorlagen dürfen nicht bepreisen.** Beim Zusammenbau eines Baums wird `xpReward` grundsätzlich neu berechnet — ein vom Modell vorgeschlagener Wert wird verworfen. Sonst hinge die Ökonomie an der Tageslaune eines Sprachmodells.
+- **Keine rückwirkende Änderung.** Beim Speichern wird nur der bearbeitete Knoten neu bepreist; bereits vergebene Belohnungen und alte Log-Einträge bleiben, wie sie waren. Historische XP aus der Zeit der freien Eingabe werden also nicht umgerechnet — das würde Level ohne Zutun des Nutzers verschieben.
 
 ## Offene Annahmen / bewusst verschoben
 

@@ -146,3 +146,51 @@ describe('SyncingRepository', () => {
     expect(seen[seen.length - 1]).toBe(1);
   });
 });
+
+describe('SyncingRepository.flush concurrency', () => {
+  beforeEach(async () => {
+    if (db.isOpen()) db.close();
+    await db.delete();
+    await db.open();
+  });
+
+  it('a concurrent flush waits for the running one instead of returning early', async () => {
+    const cloud = makeCloud();
+    let release: null | (() => void) = null;
+    const setRelease = (fn: () => void) => {
+      release = fn;
+    };
+    cloud.addLog.mockImplementation(
+      () => new Promise<void>((resolve) => setRelease(resolve)),
+    );
+
+    const sync = new SyncingRepository(
+      localRepository,
+      cloud as unknown as LifeRpgRepository,
+    );
+
+    await sync.addLog(log('a'));
+    // Wait until the background drain has actually reached the cloud call,
+    // otherwise there is nothing blocking yet to test against.
+    for (let i = 0; i < 200 && cloud.addLog.mock.calls.length === 0; i++) {
+      await settle();
+    }
+    expect(cloud.addLog).toHaveBeenCalledTimes(1);
+
+    // A second caller must not be told "done" while the first drain is still
+    // in flight – sign-in relies on this before it overwrites local state.
+    let secondFinished = false;
+    const second = sync.flush().then(() => {
+      secondFinished = true;
+    });
+
+    await settle();
+    expect(secondFinished).toBe(false);
+
+    (release as (() => void) | null)?.();
+    await second;
+
+    expect(secondFinished).toBe(true);
+    expect(await sync.pendingCount()).toBe(0);
+  });
+});

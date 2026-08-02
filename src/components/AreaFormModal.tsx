@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Area } from '../types/models';
 import { useAppStore } from '../store/useAppStore';
 import { createId } from '../lib/id';
+import { GENERIC_ACTIVITIES } from '../lib/xp';
 import { Modal } from './Modal';
 
 const COLOR_PRESETS = [
@@ -46,7 +47,10 @@ export function AreaFormModal({ area, onClose }: AreaFormModalProps) {
       xp: area?.xp ?? 0,
       sortOrder: area?.sortOrder ?? maxOrder + 1,
       isCustom: area?.isCustom ?? true,
-      suggestedActivities: area?.suggestedActivities ?? [],
+      suggestedActivities:
+        area?.suggestedActivities?.length
+          ? area.suggestedActivities
+          : GENERIC_ACTIVITIES,
     });
     onClose();
   };

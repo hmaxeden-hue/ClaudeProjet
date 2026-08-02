@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { NodeType, SkillNode } from '../types/models';
 import { useAppStore } from '../store/useAppStore';
 import { createId } from '../lib/id';
+import { nodeDepths } from '../lib/tree';
+import { xpForNode } from '../lib/xp';
 import { Modal } from './Modal';
 
 const TYPE_OPTIONS: { value: NodeType; label: string }[] = [
@@ -24,7 +26,6 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
   const [title, setTitle] = useState(node?.title ?? '');
   const [description, setDescription] = useState(node?.description ?? '');
   const [type, setType] = useState<NodeType>(node?.type ?? 'quest');
-  const [xpReward, setXpReward] = useState(node?.xpReward ?? 50);
   const [prerequisites, setPrerequisites] = useState<string[]>(
     node?.prerequisites ?? [],
   );
@@ -34,6 +35,14 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
     (n) => n.areaId === areaId && n.id !== node?.id,
   );
 
+  // Mirrors the store's pricing so the form can show the reward up front.
+  const depths = nodeDepths(nodes.filter((n) => n.areaId === areaId));
+  const depth =
+    prerequisites.length === 0
+      ? 0
+      : Math.max(...prerequisites.map((id) => (depths.get(id) ?? 0) + 1));
+  const previewXp = xpForNode(type, depth);
+
   const togglePrereq = (id: string) => {
     setPrerequisites((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
@@ -41,14 +50,13 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
   };
 
   const submit = async () => {
-    if (!title.trim() || xpReward <= 0) return;
+    if (!title.trim()) return;
     await saveNode({
       id: node?.id ?? createId(),
       areaId,
       title: title.trim(),
       description: description.trim(),
       prerequisites,
-      xpReward,
       type,
       status: node?.status,
       completedAt: node?.completedAt,
@@ -86,32 +94,28 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
           />
         </label>
 
-        <div className="flex gap-4">
-          <label className="block flex-1 text-sm font-medium text-slate-300">
-            Typ
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as NodeType)}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
-            >
-              {TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block w-28 text-sm font-medium text-slate-300">
-            XP-Belohnung
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={xpReward}
-              onChange={(e) => setXpReward(Number(e.target.value))}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
-            />
-          </label>
+        <label className="block text-sm font-medium text-slate-300">
+          Typ
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as NodeType)}
+            className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
+          >
+            {TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2.5 text-sm">
+          <span className="text-slate-400">Belohnung: </span>
+          <span className="font-semibold text-sky-300">+{previewXp} XP</span>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Ergibt sich aus Typ und Tiefe im Baum — je mehr Voraussetzungen
+            davor liegen, desto wertvoller.
+          </p>
         </div>
 
         {prereqCandidates.length > 0 && (

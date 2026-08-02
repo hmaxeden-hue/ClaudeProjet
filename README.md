@@ -17,7 +17,8 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 - **Skill-Tree-Visualisierung** pro Bereich (React Flow): abgeschlossene, verfügbare und gesperrte Knoten mit Verbindungslinien, zoom- und scrollbar
 - **Knoten, Ziele & Ressourcen** frei anlegen, bearbeiten und löschen – du bist der Autor deines Baums
 - **Aktivitäten protokollieren** mit Schnellauswahl pro Bereich → XP mit sichtbarem Feedback (XP-Toast, Level-Up-Overlay)
-- **XP- & Level-System** mit steigender Level-Kurve (`100 · n^1.5`) – unendliche Progression
+- **Festes XP-System**: du wählst Aktivität und Umfang, den Wert bestimmt die App – keine frei eintippbaren Zahlen, damit Level vergleichbar bleiben
+- **Level-Kurve** mit steigender Schwelle (`100 · n^1.5`) – unendliche Progression
 - **Dashboard** mit Charakter-Level, Streak, XP-Balken und dem empfohlenen nächsten Schritt pro Bereich
 - **Lokale Persistenz** in IndexedDB (Dexie) hinter einer Repository-Schicht – bereit für ein späteres Backend
 
