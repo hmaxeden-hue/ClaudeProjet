@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateSetup, sanitizeAiNodes, type AiNode } from './onboarding';
 import { nodeDepths } from '../lib/tree';
+import { xpForNode } from '../lib/xp';
 
 const node = (over: Partial<AiNode> = {}): AiNode => ({
   key: 'a',
@@ -110,7 +111,7 @@ describe('generateSetup with AI trees', () => {
 
   it('counts stages below the stated experience as existing progress', () => {
     const ai = sanitizeAiNodes([
-      node({ key: 'root', title: 'Einstieg', stage: 0, xpReward: 50 }),
+      node({ key: 'root', title: 'Einstieg', stage: 0 }),
       node({ key: 'mid', title: 'Routine', prerequisites: ['root'], stage: 1 }),
     ]);
 
@@ -118,11 +119,34 @@ describe('generateSetup with AI trees', () => {
       'area-knowledge': ai,
     });
 
-    // 'intermediate' completes stage 0 – the area starts with that XP.
-    expect(setup.areas[0].xp).toBe(50);
+    // 'intermediate' completes stage 0 – the area starts with that node's XP.
+    expect(setup.areas[0].xp).toBe(setup.nodes[0].xpReward);
     expect(setup.nodes[0].status).toBe('completed');
     expect(setup.nodes[1].status).toBe('available');
     expect(setup.logs).toHaveLength(1);
+  });
+
+  it('prices nodes by the system, ignoring any number the AI supplied', () => {
+    const ai = sanitizeAiNodes([
+      node({ key: 'root', title: 'Einstieg', type: 'quest', xpReward: 200 }),
+      node({
+        key: 'mid',
+        title: 'Routine',
+        type: 'quest',
+        prerequisites: ['root'],
+        stage: 1,
+        xpReward: 50,
+      }),
+    ]);
+
+    const setup = generateSetup(['area-knowledge'], answers, {
+      'area-knowledge': ai,
+    });
+
+    expect(setup.nodes[0].xpReward).toBe(xpForNode('quest', 0));
+    // Deeper node is worth more, even though the AI asked for less.
+    expect(setup.nodes[1].xpReward).toBe(xpForNode('quest', 1));
+    expect(setup.nodes[1].xpReward).toBeGreaterThan(setup.nodes[0].xpReward);
   });
 
   it('falls back to the template catalog when an area has no AI tree', () => {

@@ -21,7 +21,8 @@ import type { LifeRpgRepository, LocalRepository } from './repository';
  * entry simply stays queued until the next attempt.
  */
 export class SyncingRepository implements LifeRpgRepository {
-  private flushing = false;
+  /** The drain currently in flight, so concurrent callers can await it. */
+  private running: Promise<void> | null = null;
   /** Notified whenever the number of pending writes changes. */
   private listeners = new Set<(pending: number) => void>();
 
@@ -53,29 +54,38 @@ export class SyncingRepository implements LifeRpgRepository {
   }
 
   /**
-   * Replays queued writes against the cloud. Safe to call at any time;
-   * concurrent calls collapse into the running one.
+   * Replays queued writes against the cloud.
+   *
+   * Awaiting this means the queue was drained as far as it currently can be —
+   * a concurrent call waits for the running drain and then runs once more, so
+   * writes queued in the meantime are not left behind. Sign-in depends on that
+   * guarantee before it pulls the cloud state over the local one.
    */
   async flush(): Promise<void> {
-    if (this.flushing) return;
+    if (this.running) await this.running.catch(() => undefined);
+
+    this.running = this.drain();
+    try {
+      await this.running;
+    } finally {
+      this.running = null;
+    }
+  }
+
+  private async drain(): Promise<void> {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
-    this.flushing = true;
-    try {
-      const items = await db.outbox.orderBy('seq').toArray();
-      if (items.length === 0) return;
+    const items = await db.outbox.orderBy('seq').toArray();
+    if (items.length === 0) return;
 
-      const result = await drainQueue(items, (item) => this.applyToCloud(item));
+    const result = await drainQueue(items, (item) => this.applyToCloud(item));
 
-      const flushedKeys = result.flushed
-        .map((item) => item.seq)
-        .filter((seq): seq is number => seq !== undefined);
-      if (flushedKeys.length > 0) await db.outbox.bulkDelete(flushedKeys);
+    const flushedKeys = result.flushed
+      .map((item) => item.seq)
+      .filter((seq): seq is number => seq !== undefined);
+    if (flushedKeys.length > 0) await db.outbox.bulkDelete(flushedKeys);
 
-      await this.notify();
-    } finally {
-      this.flushing = false;
-    }
+    await this.notify();
   }
 
   private applyToCloud(item: QueuedWrite): Promise<void> {

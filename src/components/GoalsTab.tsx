@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import type { Area, Goal } from '../types/models';
-import { DEFAULT_GOAL_XP, useAppStore } from '../store/useAppStore';
+import { useAppStore } from '../store/useAppStore';
+import {
+  GOAL_SIZE_META,
+  GOAL_SIZES,
+  GOAL_XP,
+  type GoalSize,
+} from '../lib/xp';
 import { createId } from '../lib/id';
 import { Modal } from './Modal';
 
@@ -144,10 +150,10 @@ function GoalFormModal({
   const [title, setTitle] = useState(goal?.title ?? '');
   const [description, setDescription] = useState(goal?.description ?? '');
   const [targetDate, setTargetDate] = useState(goal?.targetDate ?? '');
-  const [xpReward, setXpReward] = useState(goal?.xpReward ?? DEFAULT_GOAL_XP);
+  const [size, setSize] = useState<GoalSize>(goal?.size ?? 'medium');
 
   const submit = async () => {
-    if (!title.trim() || xpReward <= 0) return;
+    if (!title.trim()) return;
     await saveGoal({
       id: goal?.id ?? createId(),
       areaId,
@@ -155,7 +161,8 @@ function GoalFormModal({
       description: description.trim(),
       targetDate: targetDate || undefined,
       status: goal?.status ?? 'open',
-      xpReward,
+      size,
+      xpReward: GOAL_XP[size],
       achievedAt: goal?.achievedAt,
     });
     onClose();
@@ -189,27 +196,46 @@ function GoalFormModal({
             className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
           />
         </label>
-        <div className="flex gap-4">
-          <label className="block flex-1 text-sm font-medium text-slate-300">
-            Zieldatum (optional)
-            <input
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
-            />
-          </label>
-          <label className="block w-28 text-sm font-medium text-slate-300">
-            XP-Belohnung
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={xpReward}
-              onChange={(e) => setXpReward(Number(e.target.value))}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
-            />
-          </label>
+        <label className="block text-sm font-medium text-slate-300">
+          Zieldatum
+          <span className="ml-1 font-normal text-slate-500">(optional)</span>
+          <input
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
+          />
+        </label>
+
+        <div>
+          <span className="text-sm font-medium text-slate-300">Umfang</span>
+          <div className="mt-1.5 grid grid-cols-3 gap-2">
+            {GOAL_SIZES.map((value) => {
+              const selected = value === size;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSize(value)}
+                  className={`rounded-lg border px-2 py-2 text-center transition ${
+                    selected
+                      ? 'border-sky-400 bg-sky-400/10'
+                      : 'border-slate-700 hover:border-slate-500'
+                  }`}
+                >
+                  <div className="text-sm font-semibold">
+                    {GOAL_SIZE_META[value].label}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {GOAL_SIZE_META[value].hint}
+                  </div>
+                  <div className="mt-0.5 text-[11px] font-medium text-sky-300">
+                    +{GOAL_XP[value]} XP
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
         <button
           type="submit"

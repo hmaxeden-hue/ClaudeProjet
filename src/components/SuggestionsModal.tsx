@@ -101,7 +101,6 @@ export function SuggestionsModal({ area, onClose }: SuggestionsModalProps) {
         title: suggestion.title,
         description: suggestion.description,
         prerequisites: anchor ? [anchor] : [],
-        xpReward: suggestion.xpReward,
         type: suggestion.type,
       });
     }
@@ -154,7 +153,7 @@ export function SuggestionsModal({ area, onClose }: SuggestionsModalProps) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                      {TYPE_LABEL[suggestion.type]} · +{suggestion.xpReward} XP
+                      {TYPE_LABEL[suggestion.type]}
                     </div>
                     <div className="mt-0.5 font-bold">{suggestion.title}</div>
                     <p className="mt-1 text-sm text-slate-400">
