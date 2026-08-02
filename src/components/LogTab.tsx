@@ -6,7 +6,10 @@ interface LogTabProps {
 }
 
 export function LogTab({ area }: LogTabProps) {
-  const logs = useAppStore((s) => s.logs).filter((l) => l.areaId === area.id);
+  // Activities logged elsewhere that also counted for this area belong here.
+  const logs = useAppStore((s) => s.logs).filter(
+    (l) => l.areaId === area.id || l.secondaryAreaIds?.includes(area.id),
+  );
   const nodes = useAppStore((s) => s.nodes);
 
   if (logs.length === 0) {

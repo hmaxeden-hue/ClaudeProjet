@@ -25,6 +25,8 @@ create table if not exists public.areas (
   sort_order integer not null default 0,
   is_custom boolean not null default false,
   suggested_activities jsonb not null default '[]'::jsonb,
+  -- Areas this one overlaps with (e.g. Spanish → knowledge + communication).
+  linked_area_ids jsonb not null default '[]'::jsonb,
   primary key (user_id, id)
 );
 
@@ -49,9 +51,12 @@ create table if not exists public.logs (
   user_id uuid not null references auth.users on delete cascade,
   id text not null,
   area_id text not null,
+  -- Further areas the same activity counted for; each got the full reward.
+  secondary_area_ids jsonb not null default '[]'::jsonb,
   node_id text,
   description text not null,
   xp integer not null default 0,
+  scope text,
   timestamp timestamptz not null default now(),
   primary key (user_id, id)
 );
@@ -66,6 +71,7 @@ create table if not exists public.goals (
   description text not null default '',
   target_date date,
   status text not null default 'open',
+  size text,
   xp_reward integer not null default 100,
   achieved_at timestamptz,
   primary key (user_id, id)
@@ -91,6 +97,18 @@ create table if not exists public.achievements (
   unlocked_at timestamptz not null default now(),
   primary key (user_id, id)
 );
+
+-- ------------------------------------------------------------ migrations --
+-- `create table if not exists` leaves existing tables untouched, so columns
+-- added later need their own statement. Running this file again is safe.
+alter table public.areas
+  add column if not exists linked_area_ids jsonb not null default '[]'::jsonb;
+alter table public.logs
+  add column if not exists secondary_area_ids jsonb not null default '[]'::jsonb;
+alter table public.logs
+  add column if not exists scope text;
+alter table public.goals
+  add column if not exists size text;
 
 -- ------------------------------------------------------ row level security --
 alter table public.profiles     enable row level security;

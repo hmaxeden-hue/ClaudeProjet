@@ -88,6 +88,8 @@ export interface TreeRequest {
   areaDescription: string;
   experience: string;
   focus: string[];
+  /** Names of areas this one overlaps with, so the tree can serve both. */
+  overlaps?: string[];
   goalText: string;
 }
 

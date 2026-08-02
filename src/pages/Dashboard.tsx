@@ -184,6 +184,15 @@ export function Dashboard() {
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span>{area?.icon ?? '❔'}</span>
+                    {/* An activity can have counted for several areas. */}
+                    {log.secondaryAreaIds?.map((id) => {
+                      const extra = areas.find((a) => a.id === id);
+                      return extra ? (
+                        <span key={id} title={extra.name} className="opacity-70">
+                          {extra.icon}
+                        </span>
+                      ) : null;
+                    })}
                     <span className="truncate text-slate-300">
                       {log.description}
                     </span>

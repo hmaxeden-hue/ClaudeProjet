@@ -39,7 +39,9 @@ const highestAreaLevel = (ctx: AchievementContext) =>
 
 /** Number of distinct areas that have at least one activity logged. */
 const touchedAreas = (ctx: AchievementContext) =>
-  new Set(ctx.logs.map((l) => l.areaId)).size;
+  new Set(
+    ctx.logs.flatMap((l) => [l.areaId, ...(l.secondaryAreaIds ?? [])]),
+  ).size;
 
 /** Counting-style achievement: unlocked once `value` reaches `target`. */
 function counter(

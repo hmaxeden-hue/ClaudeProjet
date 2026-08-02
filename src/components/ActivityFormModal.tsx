@@ -23,11 +23,24 @@ export function ActivityFormModal({
   const nodes = useAppStore((s) => s.nodes);
   const logActivity = useAppStore((s) => s.logActivity);
 
-  const [areaId, setAreaId] = useState(initialAreaId ?? areas[0]?.id ?? '');
+  /** Cap kept low so tagging everything everywhere stays unattractive. */
+  const MAX_EXTRA_AREAS = 2;
+
+  /** Overlapping areas of the chosen area start out ticked. */
+  const linkedOf = (id: string) =>
+    (areas.find((a) => a.id === id)?.linkedAreaIds ?? [])
+      .filter((linked) => linked !== id && areas.some((a) => a.id === linked))
+      .slice(0, MAX_EXTRA_AREAS);
+
+  const startAreaId = initialAreaId ?? areas[0]?.id ?? '';
+  const [areaId, setAreaId] = useState(startAreaId);
   const [nodeId, setNodeId] = useState('');
   const [activityIndex, setActivityIndex] = useState(0);
   const [note, setNote] = useState('');
   const [scope, setScope] = useState<ActivityScope>('normal');
+  const [alsoAreaIds, setAlsoAreaIds] = useState<string[]>(() =>
+    linkedOf(startAreaId),
+  );
 
   const area = areas.find((a) => a.id === areaId);
 
@@ -48,6 +61,16 @@ export function ActivityFormModal({
     [nodes, areaId],
   );
 
+  const toggleAlso = (id: string) => {
+    setAlsoAreaIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((a) => a !== id)
+        : prev.length >= MAX_EXTRA_AREAS
+          ? prev
+          : [...prev, id],
+    );
+  };
+
   const submit = async () => {
     if (!areaId || !activity) return;
     const description = note.trim()
@@ -55,6 +78,7 @@ export function ActivityFormModal({
       : activity.label;
     await logActivity({
       areaId,
+      secondaryAreaIds: alsoAreaIds,
       nodeId: nodeId || undefined,
       description,
       scope,
@@ -80,6 +104,7 @@ export function ActivityFormModal({
               setAreaId(e.target.value);
               setNodeId('');
               setActivityIndex(0);
+              setAlsoAreaIds(linkedOf(e.target.value));
             }}
             className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
           >
@@ -148,6 +173,46 @@ export function ActivityFormModal({
           </div>
         </div>
 
+        {areas.length > 1 && (
+          <div>
+            <span className="text-sm font-medium text-slate-300">
+              Zählt außerdem für
+            </span>
+            <span className="ml-1 text-sm font-normal text-slate-500">
+              (optional)
+            </span>
+            <p className="text-xs text-slate-500">
+              Jeder gewählte Bereich bekommt die vollen {xp} XP — für Dinge, die
+              wirklich beides voranbringen.
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {areas
+                .filter((a) => a.id !== areaId)
+                .map((a) => {
+                  const selected = alsoAreaIds.includes(a.id);
+                  const blocked =
+                    !selected && alsoAreaIds.length >= MAX_EXTRA_AREAS;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleAlso(a.id)}
+                      disabled={blocked}
+                      className="rounded-full border px-3 py-1.5 text-sm transition disabled:opacity-30"
+                      style={{
+                        borderColor: selected ? a.color : '#334155',
+                        backgroundColor: selected ? `${a.color}1a` : 'transparent',
+                        color: selected ? a.color : '#cbd5e1',
+                      }}
+                    >
+                      {a.icon} {a.name}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         <label className="block text-sm font-medium text-slate-300">
           Notiz
           <span className="ml-1 font-normal text-slate-500">(optional)</span>
@@ -185,6 +250,7 @@ export function ActivityFormModal({
           style={{ backgroundColor: area?.color ?? '#38bdf8' }}
         >
           +{xp} XP protokollieren
+          {alsoAreaIds.length > 0 && ` × ${alsoAreaIds.length + 1} Bereiche`}
         </button>
 
         <p className="text-center text-xs text-slate-500">

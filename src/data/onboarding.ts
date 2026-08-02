@@ -58,6 +58,17 @@ export interface OnboardingAreaConfig {
   templates: NodeTemplate[];
 }
 
+/**
+ * How much of a tree already counts as done, by stated experience. Beginners
+ * start with nothing completed; the further along someone is, the deeper the
+ * pre-completed part – and therefore the starting level.
+ */
+export const COMPLETED_THROUGH_STAGE: Record<ExperienceLevel, number> = {
+  beginner: -1,
+  intermediate: 0,
+  advanced: 1,
+};
+
 const STANDARD_EXPERIENCE = (
   beginner: string,
   intermediate: string,
@@ -67,19 +78,19 @@ const STANDARD_EXPERIENCE = (
     value: 'beginner',
     label: 'Am Anfang',
     description: beginner,
-    completedThroughStage: -1,
+    completedThroughStage: COMPLETED_THROUGH_STAGE.beginner,
   },
   {
     value: 'intermediate',
     label: 'Schon dabei',
     description: intermediate,
-    completedThroughStage: 0,
+    completedThroughStage: COMPLETED_THROUGH_STAGE.intermediate,
   },
   {
     value: 'advanced',
     label: 'Weit fortgeschritten',
     description: advanced,
-    completedThroughStage: 1,
+    completedThroughStage: COMPLETED_THROUGH_STAGE.advanced,
   },
 ];
 
@@ -807,7 +818,7 @@ function templateNodes(
   }));
 }
 
-interface BuiltArea {
+export interface BuiltArea {
   area: Area;
   nodes: SkillNode[];
   goals: Goal[];
@@ -815,27 +826,24 @@ interface BuiltArea {
 }
 
 /**
- * Builds one area from resolved nodes. Nodes at or below the stage implied by
- * the stated experience start out completed and their XP counts as existing
- * progress, so the starting level reflects where the person actually is.
+ * Turns resolved nodes into real skill nodes of one area.
+ *
+ * Nodes at or below `completedThroughStage` start out completed and their XP
+ * counts as existing progress, so the starting level reflects where the person
+ * actually is. Rewards always come from `xpForNode` – neither the templates nor
+ * the AI get to set a number, which is what keeps levels comparable.
  */
-function assembleArea(
-  config: OnboardingAreaConfig,
-  answer: AreaAnswer,
-  sortOrder: number,
+export function materializeNodes(
+  areaId: string,
   resolved: ResolvedNode[],
+  completedThroughStage: number,
   now: string,
-): BuiltArea {
-  const option = config.experienceOptions.find(
-    (o) => o.value === answer.experience,
-  );
-  const completedThroughStage = option?.completedThroughStage ?? -1;
-
+): { nodes: SkillNode[]; startingXp: number } {
   const idByKey = new Map(resolved.map((n) => [n.key, createId()]));
 
   const nodes: SkillNode[] = resolved.map((n) => ({
     id: idByKey.get(n.key)!,
-    areaId: config.areaId,
+    areaId,
     title: n.title,
     description: n.description,
     prerequisites: n.prerequisites
@@ -848,8 +856,6 @@ function assembleArea(
     completedAt: n.stage <= completedThroughStage ? now : undefined,
   }));
 
-  // Rewards follow the same rule as everywhere else: kind plus depth in the
-  // finished tree. Neither the templates nor the AI get to set a number.
   const depths = nodeDepths(nodes);
   let startingXp = 0;
   nodes.forEach((node) => {
@@ -857,14 +863,37 @@ function assembleArea(
     if (node.status === 'completed') startingXp += node.xpReward;
   });
 
+  return { nodes, startingXp };
+}
+
+/** The area fields the caller decides on; the rest follows from the tree. */
+type AreaShell = Omit<Area, 'xp'>;
+
+/** Builds one complete area – tree, optional goal and the progress log entry. */
+function buildArea(
+  shell: AreaShell,
+  answer: AreaAnswer,
+  completedThroughStage: number,
+  resolved: ResolvedNode[],
+  now: string,
+  /** Wording for the records this creates – onboarding vs. a later addition. */
+  origin: { goalNote: string; progressNote: string },
+): BuiltArea {
+  const { nodes, startingXp } = materializeNodes(
+    shell.id,
+    resolved,
+    completedThroughStage,
+    now,
+  );
+
   const goals: Goal[] = [];
   const goalText = answer.goalText.trim();
   if (goalText) {
     goals.push({
       id: createId(),
-      areaId: config.areaId,
+      areaId: shell.id,
       title: goalText,
-      description: 'Aus dem Onboarding übernommen.',
+      description: origin.goalNote,
       status: 'open',
       size: 'medium',
       xpReward: GOAL_XP.medium,
@@ -875,29 +904,69 @@ function assembleArea(
   if (startingXp > 0) {
     logs.push({
       id: createId(),
-      areaId: config.areaId,
-      description: 'Bestehender Fortschritt aus dem Onboarding',
+      areaId: shell.id,
+      description: origin.progressNote,
       xp: startingXp,
       timestamp: now,
     });
   }
 
-  return {
-    area: {
+  return { area: { ...shell, xp: startingXp }, nodes, goals, logs };
+}
+
+function assembleArea(
+  config: OnboardingAreaConfig,
+  answer: AreaAnswer,
+  sortOrder: number,
+  resolved: ResolvedNode[],
+  now: string,
+): BuiltArea {
+  const option = config.experienceOptions.find(
+    (o) => o.value === answer.experience,
+  );
+  return buildArea(
+    {
       id: config.areaId,
       name: config.name,
       icon: config.icon,
       color: config.color,
       description: config.description,
-      xp: startingXp,
       sortOrder,
       isCustom: false,
       suggestedActivities: config.suggestedActivities,
     },
-    nodes,
-    goals,
-    logs,
-  };
+    answer,
+    option?.completedThroughStage ?? -1,
+    resolved,
+    now,
+    {
+      goalNote: 'Aus dem Onboarding übernommen.',
+      progressNote: 'Bestehender Fortschritt aus dem Onboarding',
+    },
+  );
+}
+
+/**
+ * Same assembly for a self-created area, so a topic added later (say Spanish)
+ * is priced and levelled exactly like the ones from the onboarding.
+ */
+export function buildCustomArea(
+  shell: AreaShell,
+  answer: AreaAnswer,
+  resolved: ResolvedNode[],
+): BuiltArea {
+  const built = buildArea(
+    shell,
+    answer,
+    COMPLETED_THROUGH_STAGE[answer.experience],
+    resolved,
+    new Date().toISOString(),
+    {
+      goalNote: 'Beim Anlegen des Bereichs gesetzt.',
+      progressNote: 'Bestehender Fortschritt beim Anlegen des Bereichs',
+    },
+  );
+  return { ...built, nodes: recomputeNodeStatuses(built.nodes) };
 }
 
 export const DEFAULT_ANSWER: AreaAnswer = {

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { generateSetup, sanitizeAiNodes, type AiNode } from './onboarding';
+import {
+  buildCustomArea,
+  generateSetup,
+  sanitizeAiNodes,
+  type AiNode,
+} from './onboarding';
 import { nodeDepths } from '../lib/tree';
-import { xpForNode } from '../lib/xp';
+import { GOAL_XP, xpForNode } from '../lib/xp';
 
 const node = (over: Partial<AiNode> = {}): AiNode => ({
   key: 'a',
@@ -156,5 +161,93 @@ describe('generateSetup with AI trees', () => {
     expect(setup.nodes.some((n) => n.title === 'Erstes Buch fertiggelesen')).toBe(
       true,
     );
+  });
+});
+
+describe('buildCustomArea', () => {
+  const shell = {
+    id: 'area-spanish',
+    name: 'Spanisch',
+    icon: '🌍',
+    color: '#38bdf8',
+    description: 'Spanisch sprechen lernen.',
+    sortOrder: 5,
+    isCustom: true,
+    suggestedActivities: [{ label: 'Vokabeln gelernt', xp: 15 }],
+    linkedAreaIds: ['area-communication'],
+  };
+
+  const tree = () =>
+    sanitizeAiNodes([
+      node({ key: 'basics', title: 'Grundwortschatz', stage: 0 }),
+      node({
+        key: 'talk',
+        title: 'Erstes Gespräch',
+        prerequisites: ['basics'],
+        stage: 1,
+        xpReward: 50,
+      }),
+    ]);
+
+  it('prices a self-created tree exactly like an onboarding one', () => {
+    const built = buildCustomArea(
+      shell,
+      { experience: 'beginner', tags: [], goalText: '' },
+      tree(),
+    );
+
+    expect(built.nodes.map((n) => n.xpReward)).toEqual([
+      xpForNode('quest', 0),
+      xpForNode('quest', 1),
+    ]);
+    // Nothing is completed for a beginner, so the area starts at zero.
+    expect(built.area.xp).toBe(0);
+    expect(built.logs).toHaveLength(0);
+    // The entry node is reachable straight away, the deeper one is not.
+    expect(built.nodes.map((n) => n.status)).toEqual(['available', 'locked']);
+    expect(built.area.linkedAreaIds).toEqual(['area-communication']);
+  });
+
+  it('counts prior experience as starting progress', () => {
+    const built = buildCustomArea(
+      shell,
+      { experience: 'intermediate', tags: [], goalText: '' },
+      tree(),
+    );
+
+    expect(built.nodes[0].status).toBe('completed');
+    expect(built.nodes[1].status).toBe('available');
+    expect(built.area.xp).toBe(built.nodes[0].xpReward);
+    expect(built.logs).toHaveLength(1);
+    expect(built.logs[0].areaId).toBe('area-spanish');
+  });
+
+  it('turns a stated goal into an open goal of the area', () => {
+    const built = buildCustomArea(
+      shell,
+      {
+        experience: 'beginner',
+        tags: [],
+        goalText: 'Ein Gespräch auf Spanisch führen',
+      },
+      tree(),
+    );
+
+    expect(built.goals).toHaveLength(1);
+    expect(built.goals[0].title).toBe('Ein Gespräch auf Spanisch führen');
+    expect(built.goals[0].status).toBe('open');
+    expect(built.goals[0].xpReward).toBe(GOAL_XP.medium);
+  });
+
+  it('works without any nodes, so a failed AI call still yields an area', () => {
+    const built = buildCustomArea(
+      shell,
+      { experience: 'beginner', tags: [], goalText: '' },
+      [],
+    );
+
+    expect(built.nodes).toEqual([]);
+    expect(built.area.xp).toBe(0);
+    expect(built.area.name).toBe('Spanisch');
   });
 });

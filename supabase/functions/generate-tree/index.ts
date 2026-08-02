@@ -113,6 +113,8 @@ interface TreeRequest {
   areaDescription?: string;
   experience?: string;
   focus?: string[];
+  /** Existing areas this one overlaps with, e.g. Spanish and communication. */
+  overlaps?: string[];
   goalText?: string;
 }
 
@@ -166,6 +168,11 @@ Deno.serve(async (req: Request) => {
     `Schwerpunkte: ${
       payload.focus?.length ? payload.focus.join(', ') : 'keine genannt'
     }`,
+    payload.overlaps?.length
+      ? `Überschneidet sich mit diesen Bereichen: ${payload.overlaps.join(
+          ', ',
+        )}. Baue ein bis zwei Knoten ein, die beides gleichzeitig voranbringen.`
+      : null,
     payload.goalText ? `Eigenes Ziel: ${payload.goalText}` : null,
     '',
     'Entwirf den passenden Skill-Tree.',

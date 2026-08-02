@@ -24,6 +24,10 @@ Rechne mit etwa 15 Minuten. Du brauchst dafür kein Terminal.
 Damit entstehen alle Tabellen samt *Row Level Security* — jede Zeile gehört
 genau einem Konto, niemand kann fremde Daten lesen oder schreiben.
 
+> **Schon eingerichtet?** Wenn neue Felder dazukommen, einfach denselben Inhalt
+> noch einmal ausführen. Die Datei ist so geschrieben, dass mehrfaches Ausführen
+> nichts überschreibt und fehlende Spalten ergänzt.
+
 ## 3. Zugangsdaten in GitHub hinterlegen
 
 1. In Supabase links auf **Project Settings → API**. Dort stehen:
