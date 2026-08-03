@@ -5,6 +5,7 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 
 ## Features
 
+- **Gruppen**: mit Freunden gemeinsam leveln – ihr seht gegenseitig Level, Bereichs-Level und Streak. Aktivitäten, Skills, Ziele und Notizen bleiben privat
 - **Installierbar als App** (PWA): eigenes Icon, Start ohne Browserleiste, funktioniert auch ohne Netz
 - **Offline-fähig**: Änderungen werden immer sofort lokal gespeichert und automatisch hochgeladen, sobald wieder Verbindung besteht
 - **Konten & Cloud-Sync** (optional): angemeldet teilen Handy und Desktop denselben Spielstand; ohne Konto läuft alles rein lokal weiter
@@ -63,9 +64,10 @@ src/
                synchronisierender Implementierung; Outbox; Onboarding-Katalog + Baum-Generator
   store/       Zustand-Store (App-Logik, XP-Vergabe, CRUD, Abzeichen-Auswertung)
   components/  UI-Bausteine (SkillTree, Modals, XP-Bar, Feedback-Overlays, Tabs)
-  pages/       Screens: Onboarding, Dashboard, Area-Detail, Bibliothek, Abzeichen
+  pages/       Screens: Onboarding, Dashboard, Area-Detail, Bibliothek,
+               Abzeichen, Gruppen
 supabase/
-  schema.sql   Tabellen + Row Level Security für den Cloud-Modus
+  schema.sql   Tabellen, Gruppen-Funktionen + Row Level Security
   functions/   Edge Functions für KI-Vorschläge und Baum-Generierung
                (halten den API-Schlüssel serverseitig)
 ```
@@ -74,6 +76,7 @@ Design-Entscheidungen und Annahmen: siehe [DECISIONS.md](./DECISIONS.md).
 
 ## Roadmap
 
-Phasen 1–3 sind umgesetzt, dazu Offline-Betrieb und Installierbarkeit.
-Naheliegende nächste Schritte: Zerlegung großer Ziele in Zwischenschritte,
-wöchentlicher Rückblick mit Fokus-Empfehlung.
+Phasen 1–3 sind umgesetzt, dazu Offline-Betrieb, Installierbarkeit,
+überschneidende Bereiche und Gruppen. Naheliegende nächste Schritte: Zerlegung
+großer Ziele in Zwischenschritte, wöchentlicher Rückblick mit Fokus-Empfehlung,
+gemeinsame Gruppen-Ziele.

@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AreaDetail } from './pages/AreaDetail';
 import { Library } from './pages/Library';
 import { Achievements } from './pages/Achievements';
+import { Groups } from './pages/Groups';
 
 export default function App() {
   const appStatus = useAppStore((s) => s.status);
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/area/:areaId" element={<AreaDetail />} />
         <Route path="/library" element={<Library />} />
         <Route path="/achievements" element={<Achievements />} />
+        <Route path="/groups" element={<Groups />} />
       </Route>
     </Routes>
   );

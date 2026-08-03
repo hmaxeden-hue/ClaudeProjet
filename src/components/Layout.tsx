@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '🏠' },
   { to: '/library', label: 'Bibliothek', icon: '📚' },
   { to: '/achievements', label: 'Abzeichen', icon: '🏅' },
+  { to: '/groups', label: 'Gruppen', icon: '👥' },
 ];
 
 export function Layout() {

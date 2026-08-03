@@ -14,6 +14,8 @@ export type AuthStatus = 'loading' | 'signed_out' | 'signed_in';
 interface AuthState {
   status: AuthStatus;
   email: string | null;
+  /** Id of the signed-in account; used to recognise yourself in a group. */
+  userId: string | null;
   /** True while data is being moved between backends after a sign-in. */
   syncing: boolean;
   error: string | null;
@@ -88,6 +90,7 @@ async function activateCloud(userId: string): Promise<void> {
 export const useAuthStore = create<AuthState>((set) => ({
   status: 'loading',
   email: null,
+  userId: null,
   syncing: false,
   error: null,
 
@@ -102,7 +105,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     const session = data.session;
 
     if (session?.user) {
-      set({ status: 'signed_in', email: session.user.email ?? null });
+      set({
+        status: 'signed_in',
+        email: session.user.email ?? null,
+        userId: session.user.id,
+      });
       try {
         await activateCloud(session.user.id);
       } catch (error) {
@@ -120,7 +127,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // React to sign-in / sign-out that happens in another tab.
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        set({ status: 'signed_out', email: null });
+        set({ status: 'signed_out', email: null, userId: null });
         activeSync = null;
         useLocalRepository();
         void useAppStore.getState().init();
@@ -145,7 +152,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       return;
     }
-    set({ status: 'signed_in', email: data.user?.email ?? null });
+    set({
+      status: 'signed_in',
+      email: data.user?.email ?? null,
+      userId: data.user?.id ?? null,
+    });
     await activateCloud(data.user!.id);
     set({ syncing: false });
   },
@@ -161,7 +172,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ syncing: false, error: translateError(error.message) });
       return;
     }
-    set({ status: 'signed_in', email: data.user?.email ?? null });
+    set({
+      status: 'signed_in',
+      email: data.user?.email ?? null,
+      userId: data.user?.id ?? null,
+    });
     try {
       await activateCloud(data.user!.id);
       set({ syncing: false });
@@ -173,7 +188,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
-    set({ status: 'signed_out', email: null, error: null });
+    set({ status: 'signed_out', email: null, userId: null, error: null });
     activeSync = null;
     useLocalRepository();
     await useAppStore.getState().init();
