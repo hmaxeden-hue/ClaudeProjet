@@ -4,6 +4,7 @@ import type {
   Area,
   Goal,
   LogEntry,
+  Note,
   Profile,
   Resource,
   SkillNode,
@@ -175,6 +176,16 @@ export class SyncingRepository implements LifeRpgRepository {
   async deleteResource(resourceId: string): Promise<void> {
     await this.local.deleteResource(resourceId);
     await this.enqueue('deleteResource', [resourceId]);
+  }
+
+  async saveJournalNote(note: Note): Promise<void> {
+    await this.local.saveJournalNote(note);
+    await this.enqueue('saveJournalNote', [note]);
+  }
+
+  async deleteJournalNote(noteId: string): Promise<void> {
+    await this.local.deleteJournalNote(noteId);
+    await this.enqueue('deleteJournalNote', [noteId]);
   }
 
   async addAchievements(unlocks: AchievementUnlock[]): Promise<void> {

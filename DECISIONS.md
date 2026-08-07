@@ -182,9 +182,22 @@ Rückmeldung aus dem Test: Die App protokollierte, was passiert war, statt zu sa
 - Die Quest bleibt nach dem Abschluss bis Mitternacht sichtbar. Sofort die nächste Quest einzublenden würde den Tagesrhythmus zerstören, der den Bonus überhaupt erst begründet.
 - Läuft ein Tag um, während die App offen ist, zieht die Dashboard-Seite beim Öffnen nach.
 
+## Notizen und Journal
+
+Manche Aufgaben *sind* Schreibarbeit: „notiere 21 Tage lang, wie die Gespräche liefen", „stelle eine Leseliste auf". Ohne Ort dafür bleibt die Aufgabe eine Behauptung.
+
+- **Notizen hängen an der Aufgabe, nicht an einem separaten Tagebuch.** Man schreibt dort, wo man arbeitet — im Knoten-Detail, über den 📝-Knopf am nächsten Schritt und an der Tagesquest. Ein eigenständiges Journal-Eingabefeld hätte einen zweiten Ort geschaffen, an den man erst denken muss.
+- **Das Journal ist eine Ansicht, kein zweiter Speicher.** `buildJournal()` gruppiert die vorhandenen Notizen, Aktivitäten und abgeschlossenen Skills nach Kalendertag. Es gibt keine „Journal-Einträge" als eigene Sorte Daten, die auseinanderlaufen könnten.
+- **Nur Tage mit Inhalt erscheinen.** Alle Kalendertage seit der Installation aufzulisten wäre wörtlicher, würde die echten Einträge aber unter leeren Zeilen begraben. Die Lücken sieht man an den Daten selbst.
+- **Aktivitäten und Skills stehen dabei, aber untergeordnet.** Ein Tag liest sich als „was ich getan und was ich dabei gedacht habe" statt als zwei getrennte Listen an zwei Orten.
+- **`needsNotes` markiert Aufgaben, deren Ergebnis der Text ist.** Bei denen steht das Feld offen und fokussiert da, mit einem Satz dazu. Sonst wäre die Funktion genau bei den Aufgaben unsichtbar, für die sie erfunden wurde. Die KI setzt das Flag selbst; 16 Vorlagen-Knoten sind entsprechend markiert.
+- **Keine XP für Notizen.** Verlockend, aber es würde zum Schreiben von Füllsätzen einladen und die Level-Vergleichbarkeit untergraben, auf der Gruppen aufbauen. Rückmeldung gibt es stattdessen über zwei Abzeichen (erste Notiz, 14 Tage mit Einträgen).
+- **`saveJournalNote` statt `saveNote` in der Repository-Schicht.** Ein Buchstabe Unterschied zu `saveNode` wäre eine Falle — die Outbox spielt Schreibvorgänge über den Methodennamen als String wieder ab, ein Vertipper dort verlöre stillschweigend Daten.
+
 ## Offene Annahmen / bewusst verschoben
 
-- Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.
+- Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert. Notizen löschen fragt bewusst *nicht* nach: Der Eintrag ist klein, sichtbar und sofort wieder tippbar.
+- Das Journal hat keine Suche und keinen Filter nach Bereich. Bei einigen Wochen Einträgen trägt die Tagesliste; ab einigen Monaten wird beides fällig.
 - Log-Einträge löschen entfernt die XP **nicht** rückwirkend (Logs sind Journal, keine Buchhaltung). Store-API `deleteLog` existiert, ist aber bewusst nicht prominent in der UI.
 - Getestet sind Outbox, Sync, XP-Kurve, Baum-Zusammenbau und die Mehrfach-Bereichs-Vergabe im Store. `lib/tree.ts`, `lib/streak.ts` und `lib/achievements.ts` sind als reine Funktionen geschnitten und ebenso leicht testbar; verifiziert wurden sie bisher über Browser-Durchläufe.
 - Das Onboarding lässt sich nach dem Abschluss nicht erneut starten – der Baum wird stattdessen manuell weiter bearbeitet. Ein „Baum zurücksetzen" wäre ein eigenes Feature.

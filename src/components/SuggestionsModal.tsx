@@ -101,6 +101,7 @@ export function SuggestionsModal({ area, onClose }: SuggestionsModalProps) {
         title: suggestion.title,
         description: suggestion.description,
         howTo: suggestion.howTo,
+        needsNotes: suggestion.needsNotes,
         prerequisites: anchor ? [anchor] : [],
         type: suggestion.type,
       });

@@ -1,4 +1,11 @@
-import type { Area, Goal, LogEntry, Resource, SkillNode } from '../types/models';
+import type {
+  Area,
+  Goal,
+  LogEntry,
+  Note,
+  Resource,
+  SkillNode,
+} from '../types/models';
 import { levelFromXp } from './xp';
 
 /** Snapshot the achievement predicates are evaluated against. */
@@ -8,6 +15,7 @@ export interface AchievementContext {
   logs: LogEntry[];
   goals: Goal[];
   resources: Resource[];
+  notes: Note[];
   streak: number;
 }
 
@@ -36,6 +44,10 @@ const doneResources = (ctx: AchievementContext, type?: Resource['type']) =>
 
 const highestAreaLevel = (ctx: AchievementContext) =>
   Math.max(1, ...ctx.areas.map((a) => levelFromXp(a.xp)));
+
+/** Distinct days on which at least one note was written. */
+const journalDays = (ctx: AchievementContext) =>
+  new Set(ctx.notes.map((n) => n.createdAt.slice(0, 10))).size;
 
 /** Number of distinct areas that have at least one activity logged. */
 const touchedAreas = (ctx: AchievementContext) =>
@@ -256,6 +268,28 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     },
     (ctx) => ctx.resources.length,
     15,
+  ),
+  counter(
+    {
+      id: 'first-note',
+      title: 'Festgehalten',
+      description: 'Schreibe deine erste Notiz zu einer Aufgabe.',
+      icon: '📝',
+      tier: 'bronze',
+    },
+    (ctx) => ctx.notes.length,
+    1,
+  ),
+  counter(
+    {
+      id: 'journal-14',
+      title: 'Chronist',
+      description: 'Halte an 14 verschiedenen Tagen etwas fest.',
+      icon: '📓',
+      tier: 'silver',
+    },
+    journalDays,
+    14,
   ),
   counter(
     {

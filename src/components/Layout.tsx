@@ -10,6 +10,7 @@ import { SyncIndicator } from './SyncIndicator';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '🏠' },
+  { to: '/journal', label: 'Journal', icon: '📓' },
   { to: '/library', label: 'Bibliothek', icon: '📚' },
   { to: '/achievements', label: 'Abzeichen', icon: '🏅' },
   { to: '/groups', label: 'Gruppen', icon: '👥' },
@@ -99,7 +100,7 @@ export function Layout() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition ${
+              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition ${
                 isActive ? 'text-sky-400' : 'text-slate-500'
               }`
             }

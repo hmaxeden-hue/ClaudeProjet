@@ -97,6 +97,22 @@ create table if not exists public.resources (
   primary key (user_id, id)
 );
 
+-- ------------------------------------------------------------------ notes --
+-- Journal notes written while working on a skill. For many tasks the written
+-- record *is* the deliverable, so these are content, not metadata.
+create table if not exists public.notes (
+  user_id uuid not null references auth.users on delete cascade,
+  id text not null,
+  node_id text not null,
+  area_id text not null,
+  text text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+create index if not exists notes_time_idx
+  on public.notes (user_id, created_at desc);
+create index if not exists notes_node_idx on public.notes (user_id, node_id);
+
 -- ----------------------------------------------------------- achievements --
 create table if not exists public.achievements (
   user_id uuid not null references auth.users on delete cascade,
@@ -161,6 +177,8 @@ alter table public.nodes
   add column if not exists track_id text;
 alter table public.nodes
   add column if not exists how_to jsonb not null default '[]'::jsonb;
+alter table public.nodes
+  add column if not exists needs_notes boolean not null default false;
 
 -- ------------------------------------------------------ row level security --
 alter table public.profiles     enable row level security;
@@ -169,6 +187,7 @@ alter table public.nodes        enable row level security;
 alter table public.logs         enable row level security;
 alter table public.goals        enable row level security;
 alter table public.resources    enable row level security;
+alter table public.notes        enable row level security;
 alter table public.achievements enable row level security;
 
 -- One policy per table: you may only touch rows that belong to you.
@@ -177,7 +196,8 @@ declare
   t text;
 begin
   foreach t in array array[
-    'profiles', 'areas', 'nodes', 'logs', 'goals', 'resources', 'achievements'
+    'profiles', 'areas', 'nodes', 'logs', 'goals', 'resources', 'notes',
+    'achievements'
   ]
   loop
     execute format(

@@ -37,6 +37,7 @@ async function reset(areas: Area[]): Promise<void> {
     logs: [],
     goals: [],
     resources: [],
+    notes: [],
     achievements: [],
     pendingAchievements: [],
   });
@@ -214,5 +215,72 @@ describe('completing nodes', () => {
 
     await useAppStore.getState().completeNode('a');
     expect(useAppStore.getState().areas[0].xp).toBe(100);
+  });
+});
+
+describe('journal notes', () => {
+  const skill = (id: string): SkillNode => ({
+    id,
+    areaId: 'spanish',
+    title: `Skill ${id}`,
+    description: '',
+    prerequisites: [],
+    xpReward: 100,
+    status: 'available',
+    type: 'quest',
+  });
+
+  beforeEach(async () => {
+    await reset([area('spanish'), area('communication')]);
+    useAppStore.setState({ nodes: [skill('a')] });
+  });
+
+  it('stores a note against its skill and area', async () => {
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: '  Lief gut.  ' });
+
+    const { notes } = useAppStore.getState();
+    expect(notes).toHaveLength(1);
+    expect(notes[0].text).toBe('Lief gut.');
+    // The area is denormalised so the journal can colour entries without a lookup.
+    expect(notes[0].areaId).toBe('spanish');
+    expect((await db.notes.toArray())[0].text).toBe('Lief gut.');
+  });
+
+  it('ignores empty notes and unknown skills', async () => {
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: '   ' });
+    await useAppStore.getState().saveNote({ nodeId: 'gibt-es-nicht', text: 'x' });
+
+    expect(useAppStore.getState().notes).toHaveLength(0);
+    expect(await db.notes.count()).toBe(0);
+  });
+
+  it('keeps notes newest first and deletes them again', async () => {
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: 'erste' });
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: 'zweite' });
+
+    expect(useAppStore.getState().notes.map((n) => n.text)).toEqual([
+      'zweite',
+      'erste',
+    ]);
+
+    await useAppStore.getState().deleteNote(useAppStore.getState().notes[0].id);
+    expect(useAppStore.getState().notes.map((n) => n.text)).toEqual(['erste']);
+    expect(await db.notes.count()).toBe(1);
+  });
+
+  it('unlocks the first-note badge', async () => {
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: 'Erste Notiz' });
+
+    expect(
+      useAppStore.getState().achievements.map((a) => a.id),
+    ).toContain('first-note');
+  });
+
+  it('drops the notes of a deleted area', async () => {
+    await useAppStore.getState().saveNote({ nodeId: 'a', text: 'weg damit' });
+    await useAppStore.getState().deleteArea('spanish');
+
+    expect(useAppStore.getState().notes).toHaveLength(0);
+    expect(await db.notes.count()).toBe(0);
   });
 });

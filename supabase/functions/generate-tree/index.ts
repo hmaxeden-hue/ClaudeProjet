@@ -63,6 +63,11 @@ const TREE_SCHEMA = {
             description:
               'Zwei bis vier konkrete Handlungsschritte auf Deutsch, in der Du-Form. Jeder Schritt sagt, was die Person tatsächlich tut – nicht, warum es gut wäre.',
           },
+          needsNotes: {
+            type: 'boolean',
+            description:
+              'true, wenn das schriftliche Festhalten selbst die Aufgabe ist (z. B. "notiere 21 Tage lang, wie die Gespräche liefen", "stelle eine Leseliste auf"). Sonst false.',
+          },
           track: {
             type: 'string',
             enum: ['main', 'side1', 'side2'],
@@ -89,6 +94,7 @@ const TREE_SCHEMA = {
           'title',
           'description',
           'howTo',
+          'needsNotes',
           'track',
           'type',
           'xpReward',
@@ -120,6 +126,7 @@ Aufbau:
 Inhalt:
 - Schreibe auf Deutsch, in der Du-Form.
 - Jeder Knoten muss konkret und überprüfbar sein ("Vier Wochen lang zweimal pro Woche trainiert"), nicht vage ("fitter werden").
+- Setze "needsNotes" auf true, wenn das Ergebnis der Aufgabe ein geschriebener Text ist – Beobachtungen sammeln, eine Liste aufstellen, mitschreiben, reflektieren. Die App bietet dann direkt ein Notizfeld an.
 - "howTo" ist der wichtigste Teil: zwei bis vier Schritte, die sagen, was die Person konkret TUT. Nenne Mengen, Zeitpunkte und Auswahlkriterien ("20 Minuten nach dem Aufstehen", "drei Anbieter vergleichen"). Keine Motivationssätze, keine Begründungen.
 - Richte alles am Hauptziel aus. Ein Knoten, der nicht auf das Haupt- oder ein Nebenziel einzahlt, gehört nicht in den Baum.
 - Passe die Einstiegshöhe an den Erfahrungsstand an: Fortgeschrittene brauchen keine Anfängerschritte als Meisterschaftsziel.

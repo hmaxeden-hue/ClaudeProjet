@@ -25,6 +25,9 @@ Rechne mit etwa 15 Minuten. Du brauchst dafür kein Terminal.
 Damit entstehen alle Tabellen samt *Row Level Security* — jede Zeile gehört
 genau einem Konto, niemand kann fremde Daten lesen oder schreiben.
 
+Das gilt auch für deine Notizen — sie liegen in einer eigenen Tabelle, die
+niemand außer dir lesen kann.
+
 Die einzige Ausnahme sind Gruppen: Dort dürfen Mitglieder **eine einzige
 Tabelle** voneinander lesen (`member_stats`), und die enthält nur Name, Level,
 Bereichs-Level und Streak. Aktivitäten, Skills, Ziele und Notizen haben dort gar

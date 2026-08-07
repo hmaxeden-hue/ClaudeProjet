@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { dailyQuestBonus, dayKey } from '../lib/dailyQuest';
 import { HowToList } from './HowToList';
+import { QuickNoteModal } from './QuickNoteModal';
 
 /**
  * Today's highlighted skill. Stays visible after being finished so the day
@@ -12,6 +14,7 @@ export function DailyQuestCard() {
   const nodes = useAppStore((s) => s.nodes);
   const areas = useAppStore((s) => s.areas);
   const completeNode = useAppStore((s) => s.completeNode);
+  const [writingNote, setWritingNote] = useState(false);
 
   if (!quest || quest.day !== dayKey()) return null;
 
@@ -63,12 +66,21 @@ export function DailyQuestCard() {
             ✓ Heute erledigt · +{bonus} XP Bonus
           </span>
         ) : (
-          <button
-            onClick={() => void completeNode(node.id)}
-            className="shrink-0 rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-slate-950 shadow-lg shadow-amber-400/20 transition hover:bg-amber-300"
-          >
-            ✓ Erledigt (+{node.xpReward + bonus} XP)
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => setWritingNote(true)}
+              className="rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
+              title="Notiz zu dieser Aufgabe"
+            >
+              📝
+            </button>
+            <button
+              onClick={() => void completeNode(node.id)}
+              className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-slate-950 shadow-lg shadow-amber-400/20 transition hover:bg-amber-300"
+            >
+              ✓ Erledigt (+{node.xpReward + bonus} XP)
+            </button>
+          </div>
         )}
       </div>
 
@@ -76,6 +88,10 @@ export function DailyQuestCard() {
         <div className="mt-4 border-t border-amber-400/20 pt-3">
           <HowToList steps={node.howTo} color="#fbbf24" dense />
         </div>
+      )}
+
+      {writingNote && (
+        <QuickNoteModal node={node} onClose={() => setWritingNote(false)} />
       )}
     </section>
   );
