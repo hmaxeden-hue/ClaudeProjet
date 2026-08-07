@@ -4,6 +4,7 @@ import type {
   Area,
   Goal,
   LogEntry,
+  Note,
   Profile,
   Resource,
   SkillNode,
@@ -58,6 +59,7 @@ interface AppState {
   logs: LogEntry[];
   goals: Goal[];
   resources: Resource[];
+  notes: Note[];
   achievements: AchievementUnlock[];
   xpToast: XpToast | null;
   levelUp: LevelUpEvent | null;
@@ -111,6 +113,10 @@ interface AppState {
   ) => Promise<void>;
   deleteResource: (resourceId: string) => Promise<void>;
 
+  /** Writes a journal note for a skill. Empty text is ignored. */
+  saveNote: (input: { nodeId: string; text: string }) => Promise<void>;
+  deleteNote: (noteId: string) => Promise<void>;
+
   dismissAchievement: () => void;
 }
 
@@ -122,10 +128,18 @@ export const useAppStore = create<AppState>((set, get) => {
    * the ones that just became true. Cheap enough to run after every change.
    */
   async function checkAchievements(): Promise<void> {
-    const { areas, nodes, logs, goals, resources, achievements } = get();
+    const { areas, nodes, logs, goals, resources, notes, achievements } = get();
     const alreadyUnlocked = new Set(achievements.map((a) => a.id));
     const newly = findNewlyUnlocked(
-      { areas, nodes, logs, goals, resources, streak: currentStreak(logs) },
+      {
+        areas,
+        nodes,
+        logs,
+        goals,
+        resources,
+        notes,
+        streak: currentStreak(logs),
+      },
       alreadyUnlocked,
     );
     if (newly.length === 0) return;
@@ -236,6 +250,7 @@ export const useAppStore = create<AppState>((set, get) => {
     logs: [],
     goals: [],
     resources: [],
+    notes: [],
     achievements: [],
     xpToast: null,
     levelUp: null,
@@ -275,6 +290,7 @@ export const useAppStore = create<AppState>((set, get) => {
         logs,
         goals,
         resources: [],
+        notes: [],
         achievements: [],
       });
       set({
@@ -284,6 +300,7 @@ export const useAppStore = create<AppState>((set, get) => {
         logs,
         goals,
         resources: [],
+        notes: [],
         achievements: [],
         status: 'ready',
       });
@@ -490,6 +507,7 @@ export const useAppStore = create<AppState>((set, get) => {
           .map((l) => byId.get(l.id) ?? l),
         goals: state.goals.filter((g) => g.areaId !== areaId),
         resources: state.resources.filter((r) => r.areaId !== areaId),
+        notes: state.notes.filter((n) => n.areaId !== areaId),
       }));
 
       await repository.deleteArea(areaId);
@@ -575,6 +593,28 @@ export const useAppStore = create<AppState>((set, get) => {
         resources: state.resources.filter((r) => r.id !== resourceId),
       }));
       await repository.deleteResource(resourceId);
+    },
+
+    saveNote: async ({ nodeId, text }) => {
+      const trimmed = text.trim();
+      const node = get().nodes.find((n) => n.id === nodeId);
+      if (!trimmed || !node) return;
+
+      const note: Note = {
+        id: createId(),
+        nodeId,
+        areaId: node.areaId,
+        text: trimmed,
+        createdAt: new Date().toISOString(),
+      };
+      set((state) => ({ notes: [note, ...state.notes] }));
+      await repository.saveJournalNote(note);
+      await checkAchievements();
+    },
+
+    deleteNote: async (noteId) => {
+      set((state) => ({ notes: state.notes.filter((n) => n.id !== noteId) }));
+      await repository.deleteJournalNote(noteId);
     },
 
     dismissAchievement: () => {

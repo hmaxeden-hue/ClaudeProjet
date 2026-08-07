@@ -65,13 +65,18 @@ const SUGGESTION_SCHEMA = {
             description:
               'Zwei bis vier konkrete Handlungsschritte auf Deutsch, in der Du-Form. Jeder Schritt sagt, was die Person tatsächlich tut.',
           },
+          needsNotes: {
+            type: 'boolean',
+            description:
+              'true, wenn das schriftliche Festhalten selbst die Aufgabe ist (Beobachtungen sammeln, Liste aufstellen, reflektieren). Sonst false.',
+          },
           type: {
             type: 'string',
             enum: ['quest', 'habit', 'milestone'],
           },
           xpReward: { type: 'integer', enum: [50, 75, 100, 125, 150, 200] },
         },
-        required: ['title', 'description', 'howTo', 'type', 'xpReward'],
+        required: ['title', 'description', 'howTo', 'needsNotes', 'type', 'xpReward'],
         additionalProperties: false,
       },
     },

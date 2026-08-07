@@ -22,6 +22,7 @@ export function Achievements() {
   const logs = useAppStore((s) => s.logs);
   const goals = useAppStore((s) => s.goals);
   const resources = useAppStore((s) => s.resources);
+  const notes = useAppStore((s) => s.notes);
   const unlocks = useAppStore((s) => s.achievements);
 
   const ctx: AchievementContext = useMemo(
@@ -31,9 +32,10 @@ export function Achievements() {
       logs,
       goals,
       resources,
+      notes,
       streak: currentStreak(logs),
     }),
-    [areas, nodes, logs, goals, resources],
+    [areas, nodes, logs, goals, resources, notes],
   );
 
   const unlockedById = new Map(unlocks.map((u) => [u.id, u]));

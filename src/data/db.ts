@@ -4,6 +4,7 @@ import type {
   Area,
   Goal,
   LogEntry,
+  Note,
   Profile,
   Resource,
   SkillNode,
@@ -17,6 +18,7 @@ export class LifeRpgDatabase extends Dexie {
   logs!: Table<LogEntry, string>;
   goals!: Table<Goal, string>;
   resources!: Table<Resource, string>;
+  notes!: Table<Note, string>;
   achievements!: Table<AchievementUnlock, string>;
   outbox!: Table<OutboxEntry, number>;
 
@@ -37,6 +39,10 @@ export class LifeRpgDatabase extends Dexie {
     // v3 adds the outbox that lets writes survive being offline.
     this.version(3).stores({
       outbox: '++seq',
+    });
+    // v4 adds journal notes, indexed by node and by time for the day grouping.
+    this.version(4).stores({
+      notes: 'id, nodeId, createdAt',
     });
   }
 }

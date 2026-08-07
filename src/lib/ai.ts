@@ -11,6 +11,7 @@ export interface NodeSuggestion {
   description: string;
   /** Concrete steps; older deployments of the function may not send them. */
   howTo?: string[];
+  needsNotes?: boolean;
   type: NodeType;
   xpReward: number;
 }

@@ -9,6 +9,7 @@ import { AreaDetail } from './pages/AreaDetail';
 import { Library } from './pages/Library';
 import { Achievements } from './pages/Achievements';
 import { Groups } from './pages/Groups';
+import { Journal } from './pages/Journal';
 
 export default function App() {
   const appStatus = useAppStore((s) => s.status);
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/library" element={<Library />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/groups" element={<Groups />} />
+        <Route path="/journal" element={<Journal />} />
       </Route>
     </Routes>
   );

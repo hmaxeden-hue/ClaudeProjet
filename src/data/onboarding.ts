@@ -26,6 +26,8 @@ interface NodeTemplate {
   key: string;
   /** Concrete steps for doing it – the catalog's answer to "und wie?". */
   howTo?: string[];
+  /** The written record is the deliverable – offer the note field up front. */
+  needsNotes?: boolean;
   title: string;
   description: string;
   prerequisites: string[];
@@ -150,6 +152,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'learn-source',
+        needsNotes: true,
         howTo: [
           'Sammle 10 Kanäle, Kurse oder Newsletter, die du schon kennst.',
           'Streiche alles, was du zuletzt nur nebenbei konsumiert hast.',
@@ -180,6 +183,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'notes',
+        needsNotes: true,
         howTo: [
           'Entscheide dich für einen Ort: App oder Heft, aber nur einen.',
           'Halte pro Quelle drei Dinge fest: Kernaussage, Beispiel, was du ändern willst.',
@@ -211,6 +215,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'summary',
+        needsNotes: true,
         howTo: [
           'Schreib aus dem Kopf auf, was hängen geblieben ist – erst danach nachschlagen.',
           'Kürze auf eine Seite: Kernaussage, drei Argumente, dein Fazit.',
@@ -255,6 +260,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'deep-dive',
+        needsNotes: true,
         howTo: [
           'Formuliere die Frage, die du am Ende beantworten können willst.',
           'Nimm mindestens drei Quellen, die sich widersprechen dürfen.',
@@ -335,6 +341,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'apply-technique',
+        needsNotes: true,
         howTo: [
           'Wähle eine einzige Technik für die ganze Woche.',
           'Setz sie bewusst in mindestens drei Gesprächen ein.',
@@ -350,6 +357,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'ask-deeper',
+        needsNotes: true,
         howTo: [
           'Stell in jedem Gespräch mindestens zwei Nachfragen zur selben Sache.',
           'Nutze offene Fragen: „Wie kam es dazu?" statt „War das gut?"',
@@ -480,6 +488,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     templates: [
       {
         key: 'baseline',
+        needsNotes: true,
         howTo: [
           'Notiere ohne Wertung, wie oft du dich in einer normalen Woche bewegst.',
           'Halte fest, wie du dich morgens fühlst – Energie, Schlaf, Laune.',
@@ -495,6 +504,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'find-sport',
+        needsNotes: true,
         howTo: [
           'Probier in vier Wochen drei verschiedene Sachen aus.',
           'Bewerte danach nur eine Frage: Würdest du nächste Woche wieder hingehen?',
@@ -682,6 +692,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     templates: [
       {
         key: 'values',
+        needsNotes: true,
         howTo: [
           'Schreib zehn Dinge auf, die dir wichtig sind.',
           'Streiche so lange, bis fünf übrig sind – das tut absichtlich weh.',
@@ -697,6 +708,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'journal-start',
+        needsNotes: true,
         howTo: [
           'Nimm dir fünf Minuten zur selben Tageszeit.',
           'Beantworte drei feste Fragen statt frei zu schreiben.',
@@ -712,6 +724,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'year-goals',
+        needsNotes: true,
         howTo: [
           'Leite aus jedem Kernwert höchstens ein Ziel ab.',
           'Formuliere jedes so, dass du am Jahresende Ja oder Nein sagen kannst.',
@@ -744,6 +757,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'monthly-review',
+        needsNotes: true,
         howTo: [
           'Setz einen festen Termin am Monatsende.',
           'Drei Fragen: Was lief gut, was nicht, was ändere ich?',
@@ -773,6 +787,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'vision',
+        needsNotes: true,
         howTo: [
           'Beschreib einen normalen Dienstag in fünf Jahren.',
           'Konkret werden: Wo, mit wem, womit verbringst du den Tag?',
@@ -823,6 +838,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     templates: [
       {
         key: 'overview',
+        needsNotes: true,
         howTo: [
           'Sammle einen Monat lang alle Einnahmen und Ausgaben an einer Stelle.',
           'Sortiere sie in wenige Kategorien – fünf bis sieben reichen.',
@@ -853,6 +869,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'budget-month',
+        needsNotes: true,
         howTo: [
           'Leg pro Kategorie vorab einen Betrag fest.',
           'Trag Ausgaben laufend ein, nicht am Monatsende aus dem Gedächtnis.',
@@ -912,6 +929,7 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'plan',
+        needsNotes: true,
         howTo: [
           'Schreib auf, wofür du sparst und bis wann.',
           'Zerleg jedes Ziel in Monatsbeträge.',
@@ -992,6 +1010,8 @@ export interface ResolvedNode {
   description: string;
   /** Concrete steps for doing it – what turns the tree into instructions. */
   howTo: string[];
+  /** The written record is the deliverable of this one. */
+  needsNotes: boolean;
   prerequisites: string[];
   xpReward: number;
   type: NodeType;
@@ -1006,6 +1026,7 @@ export interface AiNode {
   title?: unknown;
   description?: unknown;
   howTo?: unknown;
+  needsNotes?: unknown;
   prerequisites?: unknown;
   xpReward?: unknown;
   type?: unknown;
@@ -1071,6 +1092,7 @@ export function sanitizeAiNodes(
             .map((s) => s.trim())
             .slice(0, 5)
         : [],
+      needsNotes: node.needsNotes === true,
       prerequisites,
       xpReward: nearestXp(node.xpReward),
       type: NODE_TYPES.includes(node.type as NodeType)
@@ -1101,6 +1123,7 @@ function templateNodes(
     title: t.title,
     description: t.description,
     howTo: t.howTo ?? [],
+    needsNotes: t.needsNotes ?? false,
     prerequisites: t.prerequisites.filter((k) => keys.has(k)),
     xpReward: t.xpReward,
     type: t.type,
@@ -1141,6 +1164,7 @@ export function materializeNodes(
     title: n.title,
     description: n.description,
     howTo: n.howTo.length > 0 ? n.howTo : undefined,
+    needsNotes: n.needsNotes || undefined,
     prerequisites: n.prerequisites
       .filter((k) => idByKey.has(k))
       .map((k) => idByKey.get(k)!),

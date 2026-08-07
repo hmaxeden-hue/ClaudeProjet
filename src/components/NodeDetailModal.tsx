@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { trackIdOf, tracksOf } from '../lib/tree';
 import { dailyQuestBonus, dayKey } from '../lib/dailyQuest';
 import { HowToList } from './HowToList';
+import { NodeNotes } from './NodeNotes';
 import { Modal } from './Modal';
 
 const STATUS_LABEL: Record<SkillNode['status'], string> = {
@@ -125,6 +126,10 @@ export function NodeDetailModal({
             </ul>
           </div>
         )}
+
+        <div className="border-t border-slate-800 pt-4">
+          <NodeNotes node={node} color={area.color} autoFocus={node.needsNotes} />
+        </div>
 
         {node.completedAt && (
           <p className="text-xs text-slate-500">

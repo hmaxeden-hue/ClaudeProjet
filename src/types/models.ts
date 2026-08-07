@@ -75,6 +75,12 @@ export interface SkillNode {
    * day, note one takeaway per chapter").
    */
   howTo?: string[];
+  /**
+   * True when the written record *is* the deliverable – "note for 21 days how
+   * the conversations went", "put together a reading list". Those tasks offer
+   * the note field up front instead of hiding it behind a click.
+   */
+  needsNotes?: boolean;
   /** Node ids that must be completed before this node becomes available. */
   prerequisites: string[];
   xpReward: number;
@@ -129,6 +135,19 @@ export interface Resource {
   status: ResourceStatus;
 }
 
+/**
+ * A note written while working on a skill. Notes are what the journal is made
+ * of: for many tasks the record itself is the point, not a side effect.
+ */
+export interface Note {
+  id: string;
+  nodeId: string;
+  /** Kept alongside the node id so the journal can colour entries by area. */
+  areaId: string;
+  text: string;
+  createdAt: string;
+}
+
 /** A badge the user has earned. Definitions live in lib/achievements.ts. */
 export interface AchievementUnlock {
   /** Matches the id of an AchievementDefinition. */
@@ -144,5 +163,6 @@ export interface AppData {
   logs: LogEntry[];
   goals: Goal[];
   resources: Resource[];
+  notes: Note[];
   achievements: AchievementUnlock[];
 }

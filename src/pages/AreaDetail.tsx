@@ -13,6 +13,7 @@ import { GoalsTab } from '../components/GoalsTab';
 import { ResourcesTab } from '../components/ResourcesTab';
 import { LogTab } from '../components/LogTab';
 import { HowToList } from '../components/HowToList';
+import { QuickNoteModal } from '../components/QuickNoteModal';
 import { SuggestionsModal } from '../components/SuggestionsModal';
 import { useAuthStore } from '../store/useAuthStore';
 import type { SkillNode } from '../types/models';
@@ -34,6 +35,7 @@ export function AreaDetail() {
   const nodes = useAppStore((s) => s.nodes);
   const deleteArea = useAppStore((s) => s.deleteArea);
   const completeNode = useAppStore((s) => s.completeNode);
+  const notes = useAppStore((s) => s.notes);
 
   const [tab, setTab] = useState<Tab>('tree');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export function AreaDetail() {
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [noteNodeId, setNoteNodeId] = useState<string | null>(null);
   const isSignedIn = useAuthStore((s) => s.status) === 'signed_in';
 
   const area = areas.find((a) => a.id === areaId);
@@ -67,6 +70,9 @@ export function AreaDetail() {
 
   const level = levelFromXp(area.xp);
   const nextSteps = nextStepsByTrack(area, nodes);
+  const noteCountFor = (nodeId: string) =>
+    notes.filter((n) => n.nodeId === nodeId).length;
+  const noteNode = areaNodes.find((n) => n.id === noteNodeId) ?? null;
   const selectedNode = areaNodes.find((n) => n.id === selectedNodeId) ?? null;
 
   const handleDeleteArea = async () => {
@@ -170,13 +176,22 @@ export function AreaDetail() {
                 </p>
               )}
             </div>
-            <button
-              onClick={() => void completeNode(node.id)}
-              className="shrink-0 rounded-lg px-4 py-2 text-sm font-bold text-slate-950 transition hover:brightness-110"
-              style={{ backgroundColor: track.isMain ? area.color : '#64748b' }}
-            >
-              ✓ Erledigt (+{node.xpReward} XP)
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                onClick={() => setNoteNodeId(node.id)}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
+                title="Notiz zu dieser Aufgabe"
+              >
+                📝{noteCountFor(node.id) > 0 && ` ${noteCountFor(node.id)}`}
+              </button>
+              <button
+                onClick={() => void completeNode(node.id)}
+                className="rounded-lg px-4 py-2 text-sm font-bold text-slate-950 transition hover:brightness-110"
+                style={{ backgroundColor: track.isMain ? area.color : '#64748b' }}
+              >
+                ✓ Erledigt (+{node.xpReward} XP)
+              </button>
+            </div>
           </div>
           {node.howTo && node.howTo.length > 0 && (
             <div className="mt-3 border-t border-slate-800/80 pt-3">
@@ -275,6 +290,9 @@ export function AreaDetail() {
           initialAreaId={area.id}
           onClose={() => setShowActivityForm(false)}
         />
+      )}
+      {noteNode && (
+        <QuickNoteModal node={noteNode} onClose={() => setNoteNodeId(null)} />
       )}
       {showSuggestions && (
         <SuggestionsModal

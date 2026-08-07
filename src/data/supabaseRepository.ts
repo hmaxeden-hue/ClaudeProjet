@@ -5,6 +5,7 @@ import type {
   Area,
   Goal,
   LogEntry,
+  Note,
   Profile,
   Resource,
   SkillNode,
@@ -61,6 +62,7 @@ const toNode = (r: Row): SkillNode => ({
   title: r.title as string,
   description: (r.description as string) ?? '',
   howTo: (r.how_to as string[]) ?? undefined,
+  needsNotes: Boolean(r.needs_notes),
   prerequisites: (r.prerequisites as string[]) ?? [],
   xpReward: (r.xp_reward as number) ?? 0,
   status: r.status as SkillNode['status'],
@@ -76,6 +78,7 @@ const fromNode = (n: SkillNode, userId: string): Row => ({
   title: n.title,
   description: n.description,
   how_to: n.howTo ?? [],
+  needs_notes: n.needsNotes ?? false,
   prerequisites: n.prerequisites,
   xp_reward: n.xpReward,
   status: n.status,
@@ -134,6 +137,23 @@ const fromGoal = (g: Goal, userId: string): Row => ({
   achieved_at: g.achievedAt ?? null,
 });
 
+const toNote = (r: Row): Note => ({
+  id: r.id as string,
+  nodeId: r.node_id as string,
+  areaId: r.area_id as string,
+  text: r.text as string,
+  createdAt: r.created_at as string,
+});
+
+const fromNote = (n: Note, userId: string): Row => ({
+  user_id: userId,
+  id: n.id,
+  node_id: n.nodeId,
+  area_id: n.areaId,
+  text: n.text,
+  created_at: n.createdAt,
+});
+
 const toResource = (r: Row): Resource => ({
   id: r.id as string,
   areaId: r.area_id as string,
@@ -162,7 +182,7 @@ export class SupabaseRepository implements LifeRpgRepository {
   ) {}
 
   async loadAll(): Promise<AppData> {
-    const [profiles, areas, nodes, logs, goals, resources, achievements] =
+    const [profiles, areas, nodes, logs, goals, resources, notes, achievements] =
       await Promise.all([
         this.client.from('profiles').select('*'),
         this.client.from('areas').select('*').order('sort_order'),
@@ -170,6 +190,7 @@ export class SupabaseRepository implements LifeRpgRepository {
         this.client.from('logs').select('*'),
         this.client.from('goals').select('*'),
         this.client.from('resources').select('*'),
+        this.client.from('notes').select('*'),
         this.client.from('achievements').select('*'),
       ]);
 
@@ -179,6 +200,7 @@ export class SupabaseRepository implements LifeRpgRepository {
     fail('Aktivitäten laden', logs.error);
     fail('Ziele laden', goals.error);
     fail('Ressourcen laden', resources.error);
+    fail('Notizen laden', notes.error);
     fail('Abzeichen laden', achievements.error);
 
     const profileRow = (profiles.data ?? [])[0] as Row | undefined;
@@ -199,6 +221,7 @@ export class SupabaseRepository implements LifeRpgRepository {
       logs: ((logs.data ?? []) as Row[]).map(toLog),
       goals: ((goals.data ?? []) as Row[]).map(toGoal),
       resources: ((resources.data ?? []) as Row[]).map(toResource),
+      notes: ((notes.data ?? []) as Row[]).map(toNote),
       achievements: ((achievements.data ?? []) as Row[]).map((r) => ({
         id: r.id as string,
         unlockedAt: r.unlocked_at as string,
@@ -242,6 +265,14 @@ export class SupabaseRepository implements LifeRpgRepository {
           .upsert(data.resources.map((r) => fromResource(r, this.userId)))).error,
       );
     }
+    if (data.notes.length) {
+      fail(
+        'Notizen speichern',
+        (await this.client
+          .from('notes')
+          .upsert(data.notes.map((n) => fromNote(n, this.userId)))).error,
+      );
+    }
     if (data.achievements.length) await this.addAchievements(data.achievements);
   }
 
@@ -267,7 +298,7 @@ export class SupabaseRepository implements LifeRpgRepository {
 
   async deleteArea(areaId: string): Promise<void> {
     // No cascade between these tables – remove the children explicitly.
-    for (const table of ['nodes', 'logs', 'goals', 'resources'] as const) {
+    for (const table of ['nodes', 'logs', 'goals', 'resources', 'notes'] as const) {
       fail(
         `${table} löschen`,
         (await this.client.from(table).delete().eq('area_id', areaId)).error,
@@ -341,6 +372,20 @@ export class SupabaseRepository implements LifeRpgRepository {
     fail(
       'Ressource löschen',
       (await this.client.from('resources').delete().eq('id', resourceId)).error,
+    );
+  }
+
+  async saveJournalNote(note: Note): Promise<void> {
+    fail(
+      'Notiz speichern',
+      (await this.client.from('notes').upsert(fromNote(note, this.userId))).error,
+    );
+  }
+
+  async deleteJournalNote(noteId: string): Promise<void> {
+    fail(
+      'Notiz löschen',
+      (await this.client.from('notes').delete().eq('id', noteId)).error,
     );
   }
 

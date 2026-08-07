@@ -4,6 +4,7 @@ import type {
   Area,
   Goal,
   LogEntry,
+  Note,
   Profile,
   Resource,
   SkillNode,
@@ -38,6 +39,14 @@ export interface LifeRpgRepository {
   saveResource(resource: Resource): Promise<void>;
   deleteResource(resourceId: string): Promise<void>;
 
+  /**
+   * Journal notes. Named apart from `saveNode` on purpose – a one-letter
+   * difference between two persistence methods is a trap, and the outbox
+   * replays these by method name.
+   */
+  saveJournalNote(note: Note): Promise<void>;
+  deleteJournalNote(noteId: string): Promise<void>;
+
   addAchievements(unlocks: AchievementUnlock[]): Promise<void>;
 }
 
@@ -58,6 +67,7 @@ class DexieRepository implements LocalRepository {
         db.logs,
         db.goals,
         db.resources,
+        db.notes,
         db.achievements,
       ],
       async () => {
@@ -68,6 +78,7 @@ class DexieRepository implements LocalRepository {
           db.logs.clear(),
           db.goals.clear(),
           db.resources.clear(),
+          db.notes.clear(),
           db.achievements.clear(),
         ]);
         if (data.profile) await db.profiles.put(data.profile);
@@ -76,13 +87,14 @@ class DexieRepository implements LocalRepository {
         await db.logs.bulkPut(data.logs);
         await db.goals.bulkPut(data.goals);
         await db.resources.bulkPut(data.resources);
+        await db.notes.bulkPut(data.notes);
         await db.achievements.bulkPut(data.achievements);
       },
     );
   }
 
   async loadAll(): Promise<AppData> {
-    const [profiles, areas, nodes, logs, goals, resources, achievements] =
+    const [profiles, areas, nodes, logs, goals, resources, notes, achievements] =
       await Promise.all([
         db.profiles.toArray(),
         db.areas.orderBy('sortOrder').toArray(),
@@ -90,6 +102,7 @@ class DexieRepository implements LocalRepository {
         db.logs.toArray(),
         db.goals.toArray(),
         db.resources.toArray(),
+        db.notes.toArray(),
         db.achievements.toArray(),
       ]);
     return {
@@ -99,6 +112,7 @@ class DexieRepository implements LocalRepository {
       logs,
       goals,
       resources,
+      notes,
       achievements,
     };
   }
@@ -113,6 +127,7 @@ class DexieRepository implements LocalRepository {
         db.logs,
         db.goals,
         db.resources,
+        db.notes,
         db.achievements,
       ],
       async () => {
@@ -122,6 +137,7 @@ class DexieRepository implements LocalRepository {
         await db.logs.bulkPut(data.logs);
         await db.goals.bulkPut(data.goals);
         await db.resources.bulkPut(data.resources);
+        await db.notes.bulkPut(data.notes);
         await db.achievements.bulkPut(data.achievements);
       },
     );
@@ -138,13 +154,18 @@ class DexieRepository implements LocalRepository {
   async deleteArea(areaId: string): Promise<void> {
     await db.transaction(
       'rw',
-      [db.areas, db.nodes, db.logs, db.goals, db.resources],
+      [db.areas, db.nodes, db.logs, db.goals, db.resources, db.notes],
       async () => {
         await db.areas.delete(areaId);
         await db.nodes.where('areaId').equals(areaId).delete();
         await db.logs.where('areaId').equals(areaId).delete();
         await db.goals.where('areaId').equals(areaId).delete();
         await db.resources.where('areaId').equals(areaId).delete();
+        // Notes have no areaId index – filter in memory, there are few.
+        const orphaned = (await db.notes.toArray()).filter(
+          (n) => n.areaId === areaId,
+        );
+        await db.notes.bulkDelete(orphaned.map((n) => n.id));
       },
     );
   }
@@ -185,6 +206,14 @@ class DexieRepository implements LocalRepository {
     await db.resources.delete(resourceId);
   }
 
+  async saveJournalNote(note: Note): Promise<void> {
+    await db.notes.put(note);
+  }
+
+  async deleteJournalNote(noteId: string): Promise<void> {
+    await db.notes.delete(noteId);
+  }
+
   async addAchievements(unlocks: AchievementUnlock[]): Promise<void> {
     await db.achievements.bulkPut(unlocks);
   }
@@ -223,5 +252,7 @@ export const repository: LifeRpgRepository = {
   deleteGoal: (goalId) => active.deleteGoal(goalId),
   saveResource: (resource) => active.saveResource(resource),
   deleteResource: (resourceId) => active.deleteResource(resourceId),
+  saveJournalNote: (note) => active.saveJournalNote(note),
+  deleteJournalNote: (noteId) => active.deleteJournalNote(noteId),
   addAchievements: (unlocks) => active.addAchievements(unlocks),
 };
