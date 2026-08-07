@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { levelFromXp } from '../lib/xp';
@@ -8,6 +8,7 @@ import { ACHIEVEMENTS, ACHIEVEMENTS_BY_ID } from '../lib/achievements';
 import { XPBar } from '../components/XPBar';
 import { AreaFormModal } from '../components/AreaFormModal';
 import { ActivityFormModal } from '../components/ActivityFormModal';
+import { DailyQuestCard } from '../components/DailyQuestCard';
 
 export function Dashboard() {
   const profile = useAppStore((s) => s.profile);
@@ -18,6 +19,12 @@ export function Dashboard() {
 
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
+  const refreshDailyQuest = useAppStore((s) => s.refreshDailyQuest);
+
+  // Rolls the quest over when the app was left open past midnight.
+  useEffect(() => {
+    void refreshDailyQuest();
+  }, [refreshDailyQuest]);
 
   const characterLevel = areas.reduce((sum, a) => sum + levelFromXp(a.xp), 0);
   const totalXp = areas.reduce((sum, a) => sum + a.xp, 0);
@@ -68,6 +75,8 @@ export function Dashboard() {
         </div>
       </section>
 
+      <DailyQuestCard />
+
       {/* Area tiles */}
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -83,6 +92,13 @@ export function Dashboard() {
           {areas.map((area) => {
             const level = levelFromXp(area.xp);
             const nextStep = nextStepForArea(nodes, area.id);
+            // Only a real, stated goal is worth the line – the fallback is
+            // just the area name again.
+            const mainGoalTitle = area.tracks?.find((t) => t.isMain)?.title;
+            const mainGoal =
+              mainGoalTitle && mainGoalTitle !== area.name
+                ? mainGoalTitle
+                : null;
             return (
               <Link
                 key={area.id}
@@ -115,10 +131,20 @@ export function Dashboard() {
                   <XPBar xp={area.xp} color={area.color} />
                 </div>
                 <div className="mt-3 rounded-lg bg-slate-950/60 px-3 py-2 text-xs">
+                  {mainGoal && (
+                    <div className="mb-1 truncate text-[11px] text-slate-500">
+                      🎯 {mainGoal}
+                    </div>
+                  )}
                   {nextStep ? (
                     <>
                       <span className="text-slate-500">Nächster Schritt: </span>
                       <span className="text-slate-300">{nextStep.title}</span>
+                      {nextStep.howTo?.[0] && (
+                        <div className="mt-1 truncate text-[11px] text-slate-500">
+                          1. {nextStep.howTo[0]}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <span className="text-slate-500">

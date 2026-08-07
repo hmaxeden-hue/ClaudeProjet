@@ -1,4 +1,25 @@
-import type { SkillNode } from '../types/models';
+import type { Area, AreaTrack, SkillNode } from '../types/models';
+
+/** Id of the track a node belongs to; nodes without one sit on the main track. */
+export const MAIN_TRACK_ID = 'main';
+
+export function trackIdOf(node: SkillNode): string {
+  return node.trackId ?? MAIN_TRACK_ID;
+}
+
+/**
+ * The area's tracks, main one first, with a fallback for areas created before
+ * tracks existed – their whole tree is simply the main track.
+ */
+export function tracksOf(area: Area): AreaTrack[] {
+  const tracks = area.tracks ?? [];
+  if (tracks.length === 0) {
+    return [{ id: MAIN_TRACK_ID, title: area.name, isMain: true }];
+  }
+  return [...tracks].sort(
+    (a, b) => Number(b.isMain) - Number(a.isMain) || a.title.localeCompare(b.title),
+  );
+}
 
 /**
  * Recompute locked/available for all non-completed nodes based on
@@ -44,7 +65,11 @@ export function nodeDepths(nodes: SkillNode[]): Map<string, number> {
   return depths;
 }
 
-/** The shallowest available node of an area – shown as the recommended next step. */
+/**
+ * The recommended next step of an area: the shallowest available node, with
+ * the main track winning ties. The point of a main track is that it is the one
+ * the app keeps pointing at.
+ */
 export function nextStepForArea(
   nodes: SkillNode[],
   areaId: string,
@@ -54,7 +79,30 @@ export function nextStepForArea(
   const available = areaNodes.filter((n) => n.status === 'available');
   if (available.length === 0) return null;
   available.sort(
-    (a, b) => (depths.get(a.id) ?? 0) - (depths.get(b.id) ?? 0),
+    (a, b) =>
+      Number(trackIdOf(b) === MAIN_TRACK_ID) -
+        Number(trackIdOf(a) === MAIN_TRACK_ID) ||
+      (depths.get(a.id) ?? 0) - (depths.get(b.id) ?? 0),
   );
   return available[0];
+}
+
+/** Every open next step of an area, grouped by track – main track first. */
+export function nextStepsByTrack(
+  area: Area,
+  nodes: SkillNode[],
+): { track: AreaTrack; node: SkillNode }[] {
+  const areaNodes = nodes.filter((n) => n.areaId === area.id);
+  const depths = nodeDepths(areaNodes);
+
+  return tracksOf(area)
+    .map((track) => {
+      const open = areaNodes
+        .filter((n) => trackIdOf(n) === track.id && n.status === 'available')
+        .sort((a, b) => (depths.get(a.id) ?? 0) - (depths.get(b.id) ?? 0));
+      return open[0] ? { track, node: open[0] } : null;
+    })
+    .filter((entry): entry is { track: AreaTrack; node: SkillNode } =>
+      Boolean(entry),
+    );
 }

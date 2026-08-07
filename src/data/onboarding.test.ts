@@ -87,6 +87,7 @@ describe('generateSetup with AI trees', () => {
       experience: 'intermediate' as const,
       tags: [],
       goalText: '',
+      sideGoals: [],
     },
   };
 
@@ -192,7 +193,7 @@ describe('buildCustomArea', () => {
   it('prices a self-created tree exactly like an onboarding one', () => {
     const built = buildCustomArea(
       shell,
-      { experience: 'beginner', tags: [], goalText: '' },
+      { experience: 'beginner', tags: [], goalText: '', sideGoals: [] },
       tree(),
     );
 
@@ -211,7 +212,7 @@ describe('buildCustomArea', () => {
   it('counts prior experience as starting progress', () => {
     const built = buildCustomArea(
       shell,
-      { experience: 'intermediate', tags: [], goalText: '' },
+      { experience: 'intermediate', tags: [], goalText: '', sideGoals: [] },
       tree(),
     );
 
@@ -229,6 +230,7 @@ describe('buildCustomArea', () => {
         experience: 'beginner',
         tags: [],
         goalText: 'Ein Gespräch auf Spanisch führen',
+        sideGoals: [],
       },
       tree(),
     );
@@ -242,7 +244,7 @@ describe('buildCustomArea', () => {
   it('works without any nodes, so a failed AI call still yields an area', () => {
     const built = buildCustomArea(
       shell,
-      { experience: 'beginner', tags: [], goalText: '' },
+      { experience: 'beginner', tags: [], goalText: '', sideGoals: [] },
       [],
     );
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   DEFAULT_ANSWER,
+  MAX_SIDE_GOALS,
   ONBOARDING_AREAS,
   type AreaAnswer,
   type ExperienceLevel,
@@ -52,6 +53,15 @@ export function Onboarding() {
     }));
   };
 
+  const sideGoalsOf = (areaId: string): string[] =>
+    answerFor(areaId).sideGoals;
+
+  const updateSideGoal = (areaId: string, index: number, value: string) => {
+    const next = [...sideGoalsOf(areaId)];
+    next[index] = value;
+    updateAnswer(areaId, { sideGoals: next });
+  };
+
   const toggleArea = (areaId: string) => {
     setSelectedAreaIds((prev) =>
       prev.includes(areaId)
@@ -65,7 +75,9 @@ export function Onboarding() {
       ? name.trim().length > 0
       : step === 1
         ? selectedAreaIds.length > 0
-        : true;
+        : currentArea
+          ? answerFor(currentArea.areaId).goalText.trim().length > 2
+          : true;
 
   const finishWithTemplates = async () => {
     if (busy) return;
@@ -98,6 +110,7 @@ export function Onboarding() {
               .filter((o) => answer.tags.includes(o.tag))
               .map((o) => o.label.replace(/^\S+\s/, '')),
             goalText: answer.goalText,
+            sideGoals: answer.sideGoals,
           });
           setBuildStates((prev) => ({
             ...prev,
@@ -150,9 +163,9 @@ export function Onboarding() {
                 Life RPG
               </h1>
               <p className="mt-3 text-slate-400">
-                Dein Leben als Skill-Tree. In den nächsten Schritten stellen wir
-                dir ein paar Fragen – daraus bauen wir einen Baum, der zu dir
-                passt. Ändern kannst du später alles.
+                Dein Leben als Skill-Tree. Gleich fragen wir dich vor allem
+                nach deinen Zielen – daraus bauen wir für jeden Bereich einen
+                Weg, der genau dorthin führt. Ändern kannst du später alles.
               </p>
               <label className="mt-6 block text-left text-sm font-medium text-slate-300">
                 Wie heißt dein Charakter?
@@ -305,12 +318,15 @@ export function Onboarding() {
                 </div>
               </div>
 
-              {/* Free-text goal */}
-              <label className="mt-5 block text-sm font-semibold text-slate-300">
-                {currentArea.goalPrompt}
-                <span className="ml-1 font-normal text-slate-500">
-                  (optional)
-                </span>
+              {/* Main goal – this is what the tree is built around */}
+              <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+                <h3 className="text-sm font-semibold text-slate-200">
+                  🎯 Dein Hauptziel in diesem Bereich
+                </h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  Je konkreter, desto genauer der Baum. „Besser werden" ergibt
+                  einen Baum für alle — „5 km am Stück laufen" ergibt deinen.
+                </p>
                 <input
                   value={answerFor(currentArea.areaId).goalText}
                   onChange={(e) =>
@@ -319,9 +335,57 @@ export function Onboarding() {
                     })
                   }
                   placeholder={currentArea.goalPlaceholder}
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                  className="mt-2.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm placeholder-slate-600 focus:border-sky-500 focus:outline-none"
                 />
-              </label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {currentArea.goalExamples.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      onClick={() =>
+                        updateAnswer(currentArea.areaId, { goalText: example })
+                      }
+                      className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Side goals become their own branches next to the main one */}
+                <div className="mt-4 border-t border-slate-800 pt-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Nebenziele
+                    <span className="ml-1 font-normal normal-case tracking-normal">
+                      (optional, eigener Ast im Baum)
+                    </span>
+                  </h4>
+                  {sideGoalsOf(currentArea.areaId).map((goal, index) => (
+                    <input
+                      key={index}
+                      value={goal}
+                      onChange={(e) =>
+                        updateSideGoal(currentArea.areaId, index, e.target.value)
+                      }
+                      placeholder={`Nebenziel ${index + 1}`}
+                      className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                    />
+                  ))}
+                  {sideGoalsOf(currentArea.areaId).length < MAX_SIDE_GOALS && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateAnswer(currentArea.areaId, {
+                          sideGoals: [...sideGoalsOf(currentArea.areaId), ''],
+                        })
+                      }
+                      className="mt-2 text-xs text-slate-400 transition hover:text-white"
+                    >
+                      + Nebenziel hinzufügen
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

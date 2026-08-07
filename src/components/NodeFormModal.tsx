@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { NodeType, SkillNode } from '../types/models';
 import { useAppStore } from '../store/useAppStore';
 import { createId } from '../lib/id';
-import { nodeDepths } from '../lib/tree';
+import { MAIN_TRACK_ID, nodeDepths, trackIdOf, tracksOf } from '../lib/tree';
 import { xpForNode } from '../lib/xp';
 import { Modal } from './Modal';
 
@@ -29,6 +29,12 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
   const [prerequisites, setPrerequisites] = useState<string[]>(
     node?.prerequisites ?? [],
   );
+  const [trackId, setTrackId] = useState(node ? trackIdOf(node) : MAIN_TRACK_ID);
+  // Edited as one step per line – far less fiddly than a list of inputs.
+  const [howTo, setHowTo] = useState((node?.howTo ?? []).join('\n'));
+
+  const area = useAppStore((s) => s.areas.find((a) => a.id === areaId));
+  const tracks = area ? tracksOf(area) : [];
 
   // A node cannot depend on itself; deeper cycle checks happen in lib/tree.
   const prereqCandidates = nodes.filter(
@@ -54,8 +60,13 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
     await saveNode({
       id: node?.id ?? createId(),
       areaId,
+      trackId,
       title: title.trim(),
       description: description.trim(),
+      howTo: howTo
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean),
       prerequisites,
       type,
       status: node?.status,
@@ -93,6 +104,37 @@ export function NodeFormModal({ areaId, node, onClose }: NodeFormModalProps) {
             className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
           />
         </label>
+
+        <label className="block text-sm font-medium text-slate-300">
+          So gehst du vor
+          <span className="ml-1 font-normal text-slate-500">
+            (ein Schritt pro Zeile)
+          </span>
+          <textarea
+            value={howTo}
+            onChange={(e) => setHowTo(e.target.value)}
+            rows={3}
+            placeholder={'Wähle ein Buch zu einer Frage, die dich beschäftigt.\nLies 20 Minuten nach dem Aufstehen.'}
+            className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+          />
+        </label>
+
+        {tracks.length > 1 && (
+          <label className="block text-sm font-medium text-slate-300">
+            Weg
+            <select
+              value={trackId}
+              onChange={(e) => setTrackId(e.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 focus:border-sky-500 focus:outline-none"
+            >
+              {tracks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.isMain ? '★ Hauptweg' : 'Nebenweg'}: {t.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="block text-sm font-medium text-slate-300">
           Typ

@@ -152,6 +152,36 @@ Zum ersten Mal verlassen Daten das eigene Konto — entsprechend eng ist der Zus
 - **Der Schnappschuss wird nach jeder XP-Vergabe aktualisiert**, im Hintergrund und ohne die Protokollierung aufzuhalten. Schlägt er fehl (offline, abgemeldet), passiert nichts Sichtbares; spätestens beim nächsten Öffnen der Gruppen-Seite ist er wieder aktuell.
 - **Sortiert nach Charakter-Level.** „Gemeinsam leveln" heißt vergleichen können — und weil niemand seine XP-Zahlen selbst wählen kann (siehe XP-System), ist der Vergleich überhaupt erst aussagekräftig. Genau deshalb war die feste XP-Vergabe die Voraussetzung für dieses Feature.
 
+## Anleitung statt Tagebuch
+
+Rückmeldung aus dem Test: Die App protokollierte, was passiert war, statt zu sagen, was zu tun ist. Vier Änderungen, die zusammengehören.
+
+- **Das Ziel kommt zuerst und ist Pflicht.** Im Onboarding lässt sich ein Bereich nicht mehr ohne konkretes Hauptziel abschließen. Ein Pflichtfeld ist eine harte Maßnahme, aber ein optionales Zielfeld wird übersprungen, und dann bleibt nur ein generischer Baum — genau das Problem. Abgefedert durch Beispiele zum Anklicken: konkret werden dauert damit einen Klick, nicht eine Denkpause.
+- **Der Baum ist der Weg zu diesem Ziel.** Der Prompt verlangt jetzt **einen** durchgehenden Hauptweg, dessen letzter Knoten das Hauptziel selbst ist. Vorher waren „echte Verzweigungen" gefordert — das ergab hübsche Bäume ohne Richtung.
+- **`howTo` pro Knoten.** Zwei bis vier Schritte, die sagen, was man *tut* (Mengen, Zeitpunkte, Auswahlkriterien), ausdrücklich keine Begründungen. Das ist der eigentliche Unterschied zwischen „Buch lesen" und einer Anleitung. Auch alle 45 Vorlagen-Knoten haben Schritte bekommen — sonst wäre der Offline-Pfad genau das Tagebuch geblieben, das ersetzt werden sollte.
+- **Sichtbar an jeder Stelle, an der man hinschaut:** Bereichsseite (nächster Schritt je Weg samt Schritten und Erledigt-Knopf), Dashboard-Kachel (Ziel + erster Schritt), Knoten-Detail, Tagesquest.
+
+## Hauptweg und Nebenwege
+
+- **Ein Bereich hat genau einen Hauptweg** (`Area.tracks`, `SkillNode.trackId`). Er trägt das Hauptziel als Überschrift und ist der, auf den die App zeigt: `nextStepForArea` bevorzugt ihn bei gleicher Tiefe.
+- **Nebenziele bekommen eigene Äste**, dürfen aber an den Hauptweg andocken — umgekehrt nie. Sonst könnte ein Nebenziel den Weg zum Hauptziel blockieren, und die Hierarchie wäre nur behauptet.
+- **Sichtbar unterschieden statt nur logisch:** eigene Spalte mit Überschrift („★ Hauptziel" / „Nebenziel"), breitere Karten mit Bereichsfarbe für den Hauptweg, schmalere in Grau für Nebenwege, gestrichelte Kanten zwischen den Wegen.
+- Bereiche aus der Zeit davor haben kein `tracks` — `tracksOf()` liefert für sie einen Hauptweg mit dem Bereichsnamen, sodass alles Bestehende unverändert weiterläuft.
+- **React-Flow-Fallstrick:** Knoten bekommen `pointer-events: none`, sobald React Flow sie für nicht-interaktiv hält (`elementsSelectable={false}` + nicht draggable). Die Karten waren dadurch nicht mehr anklickbar; sie sind jetzt explizit `selectable`. Außerdem wird nach dem ersten Frame erneut `fitView` aufgerufen — der erste Aufruf passiert, bevor die eigenen Karten vermessen sind, und schnitt die unterste Reihe ab.
+
+## Reihenfolge ist ein Vorschlag, keine Vorschrift
+
+- Ein gesperrter Knoten lässt sich **trotzdem abhaken**. Der Baum kennt eine sinnvolle Reihenfolge, aber nicht das Leben: Wer die 5 km schon gelaufen ist, soll das eintragen können, ohne vorher Zwischenschritte abzuhaken, die er nie so gemacht hat.
+- **Voraussetzungen werden dabei nicht automatisch miterledigt.** Naheliegend, aber es würde XP für Dinge vergeben, die niemand getan hat — und das XP-System lebt davon, dass Level vergleichbar bleiben. Der übersprungene Knoten bleibt offen und kann später einzeln abgehakt werden.
+- Der Dialog erklärt das statt zu blockieren („Normalerweise kommt X vorher — wenn du das hier trotzdem geschafft hast, hak es ab").
+
+## Tagesquest
+
+- Jeden Tag ist **ein** verfügbarer Skill hervorgehoben; wer ihn am selben Tag abschließt, bekommt **50 % Bonus-XP**. Ein fester Aufschlag statt einer eigenen Zahl — dieselbe Regel wie überall: Der Nutzer wählt nicht, was etwas wert ist.
+- **Die Wahl wird gespeichert** (`Profile.dailyQuest`), nicht bei jedem Rendern neu berechnet. Die verlockende zustandsfreie Variante hat einen stillen Fehler: Sobald die Quest erledigt ist, schrumpft die Kandidatenliste, die Wahl springt auf einen anderen Knoten — und der Bonus ließe sich mehrfach am Tag kassieren.
+- Die Quest bleibt nach dem Abschluss bis Mitternacht sichtbar. Sofort die nächste Quest einzublenden würde den Tagesrhythmus zerstören, der den Bonus überhaupt erst begründet.
+- Läuft ein Tag um, während die App offen ist, zieht die Dashboard-Seite beim Öffnen nach.
+
 ## Offene Annahmen / bewusst verschoben
 
 - Kein Undo für Löschaktionen (nur Bestätigungsdialog) – für ein lokales Single-User-MVP akzeptiert.

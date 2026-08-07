@@ -36,6 +36,7 @@ const toArea = (r: Row): Area => ({
   isCustom: Boolean(r.is_custom),
   suggestedActivities: (r.suggested_activities as Area['suggestedActivities']) ?? [],
   linkedAreaIds: (r.linked_area_ids as string[]) ?? undefined,
+  tracks: (r.tracks as Area['tracks']) ?? undefined,
 });
 
 const fromArea = (a: Area, userId: string): Row => ({
@@ -50,13 +51,16 @@ const fromArea = (a: Area, userId: string): Row => ({
   is_custom: a.isCustom,
   suggested_activities: a.suggestedActivities,
   linked_area_ids: a.linkedAreaIds ?? [],
+  tracks: a.tracks ?? [],
 });
 
 const toNode = (r: Row): SkillNode => ({
   id: r.id as string,
   areaId: r.area_id as string,
+  trackId: (r.track_id as string) ?? undefined,
   title: r.title as string,
   description: (r.description as string) ?? '',
+  howTo: (r.how_to as string[]) ?? undefined,
   prerequisites: (r.prerequisites as string[]) ?? [],
   xpReward: (r.xp_reward as number) ?? 0,
   status: r.status as SkillNode['status'],
@@ -68,8 +72,10 @@ const fromNode = (n: SkillNode, userId: string): Row => ({
   user_id: userId,
   id: n.id,
   area_id: n.areaId,
+  track_id: n.trackId ?? null,
   title: n.title,
   description: n.description,
+  how_to: n.howTo ?? [],
   prerequisites: n.prerequisites,
   xp_reward: n.xpReward,
   status: n.status,
@@ -184,6 +190,8 @@ export class SupabaseRepository implements LifeRpgRepository {
             name: profileRow.name as string,
             avatar: (profileRow.avatar as string) ?? undefined,
             createdAt: profileRow.created_at as string,
+            dailyQuest:
+              (profileRow.daily_quest as Profile['dailyQuest']) ?? undefined,
           }
         : null,
       areas: ((areas.data ?? []) as Row[]).map(toArea),
@@ -245,6 +253,7 @@ export class SupabaseRepository implements LifeRpgRepository {
         name: profile.name,
         avatar: profile.avatar ?? null,
         created_at: profile.createdAt,
+        daily_quest: profile.dailyQuest ?? null,
       })).error,
     );
   }

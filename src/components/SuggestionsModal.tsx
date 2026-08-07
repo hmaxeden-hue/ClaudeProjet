@@ -100,6 +100,7 @@ export function SuggestionsModal({ area, onClose }: SuggestionsModalProps) {
         areaId: area.id,
         title: suggestion.title,
         description: suggestion.description,
+        howTo: suggestion.howTo,
         prerequisites: anchor ? [anchor] : [],
         type: suggestion.type,
       });

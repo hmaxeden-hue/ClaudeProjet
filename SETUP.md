@@ -32,7 +32,8 @@ keine Spalte — sie können also auch nicht versehentlich sichtbar werden.
 
 > **Schon eingerichtet?** Wenn neue Felder dazukommen, einfach denselben Inhalt
 > noch einmal ausführen. Die Datei ist so geschrieben, dass mehrfaches Ausführen
-> nichts überschreibt und fehlende Spalten ergänzt.
+> nichts überschreibt und fehlende Spalten ergänzt. Nach einem Update mit neuen
+> Funktionen lohnt sich das immer als erster Schritt.
 
 ## 3. Zugangsdaten in GitHub hinterlegen
 

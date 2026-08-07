@@ -1,10 +1,16 @@
 import type { NodeType } from '../types/models';
-import { sanitizeAiNodes, type ResolvedNode } from '../data/onboarding';
+import {
+  SIDE_TRACK_KEYS,
+  sanitizeAiNodes,
+  type ResolvedNode,
+} from '../data/onboarding';
 import { supabase } from './supabase';
 
 export interface NodeSuggestion {
   title: string;
   description: string;
+  /** Concrete steps; older deployments of the function may not send them. */
+  howTo?: string[];
   type: NodeType;
   xpReward: number;
 }
@@ -90,7 +96,10 @@ export interface TreeRequest {
   focus: string[];
   /** Names of areas this one overlaps with, so the tree can serve both. */
   overlaps?: string[];
+  /** The main goal the main track has to lead to. */
   goalText: string;
+  /** Secondary goals, each becoming its own side track. */
+  sideGoals?: string[];
 }
 
 /**
@@ -111,5 +120,11 @@ export async function fetchGeneratedTree(
   if (error) throw new Error(await describeInvokeError(error));
   if (data?.error) throw new Error(data.error);
 
-  return sanitizeAiNodes(data?.nodes ?? []);
+  // Only side tracks the user actually named may be used.
+  const allowedTracks = SIDE_TRACK_KEYS.slice(
+    0,
+    (input.sideGoals ?? []).filter((g) => g.trim()).length,
+  ) as unknown as string[];
+
+  return sanitizeAiNodes(data?.nodes ?? [], allowedTracks);
 }

@@ -5,6 +5,9 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 
 ## Features
 
+- **Zielgetriebene Bäume**: Du gibst pro Bereich dein konkretes Hauptziel an – der Baum ist der Weg dorthin. Nebenziele bekommen eigene Äste, sichtbar getrennt vom Hauptweg
+- **„Und wie?"**: Jeder Skill bringt konkrete Handlungsschritte mit – nicht nur „lies ein Buch", sondern woran du es festmachst, wie oft und woran du merkst, dass es erledigt ist
+- **Tagesquest**: Jeden Tag ist ein Skill hervorgehoben – schaffst du ihn heute, gibt es 50 % Bonus-XP obendrauf
 - **Gruppen**: mit Freunden gemeinsam leveln – ihr seht gegenseitig Level, Bereichs-Level und Streak. Aktivitäten, Skills, Ziele und Notizen bleiben privat
 - **Installierbar als App** (PWA): eigenes Icon, Start ohne Browserleiste, funktioniert auch ohne Netz
 - **Offline-fähig**: Änderungen werden immer sofort lokal gespeichert und automatisch hochgeladen, sobald wieder Verbindung besteht
@@ -17,7 +20,8 @@ Purpose und Finanzen – wie in einem RPG, nur echt.
 - **21 Abzeichen** in Bronze/Silber/Gold mit Fortschrittsanzeige und Freischalt-Feedback
 - **Ressourcen-Bibliothek** über alle Bereiche hinweg, mit Suche und Filtern nach Bereich, Typ und Status
 - **5 Kernbereiche** (frei abwählbar) + beliebig viele eigene Bereiche
-- **Skill-Tree-Visualisierung** pro Bereich (React Flow): abgeschlossene, verfügbare und gesperrte Knoten mit Verbindungslinien, zoom- und scrollbar
+- **Skill-Tree-Visualisierung** pro Bereich (React Flow): Hauptweg und Nebenwege als eigene Spalten, abgeschlossene, verfügbare und gesperrte Knoten mit Verbindungslinien, zoom- und scrollbar
+- **Keine erzwungene Reihenfolge**: Der Baum schlägt einen Weg vor – abhaken kannst du jeden Skill, auch wenn davor noch etwas offen ist
 - **Knoten, Ziele & Ressourcen** frei anlegen, bearbeiten und löschen – du bist der Autor deines Baums
 - **Aktivitäten protokollieren** mit Schnellauswahl pro Bereich → XP mit sichtbarem Feedback (XP-Toast, Level-Up-Overlay)
 - **Festes XP-System**: du wählst Aktivität und Umfang, den Wert bestimmt die App – keine frei eintippbaren Zahlen, damit Level vergleichbar bleiben
@@ -59,7 +63,8 @@ React 18 · TypeScript · Vite · Tailwind CSS 4 · React Flow (@xyflow/react) �
 ```
 src/
   types/       Domain-Typen (Profile, Area, SkillNode, LogEntry, Goal, Resource)
-  lib/         Reine Logik: XP-Kurve, Baum-Status/-Tiefe, Streak, Abzeichen
+  lib/         Reine Logik: XP-Kurve, Baum-Status/-Tiefe/-Wege, Streak,
+               Abzeichen, Tagesquest, geteilter Gruppen-Schnappschuss
   data/        Repository-Interface mit lokaler (Dexie), Cloud- (Supabase) und
                synchronisierender Implementierung; Outbox; Onboarding-Katalog + Baum-Generator
   store/       Zustand-Store (App-Logik, XP-Vergabe, CRUD, Abzeichen-Auswertung)
