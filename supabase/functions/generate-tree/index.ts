@@ -53,7 +53,21 @@ const TREE_SCHEMA = {
           },
           description: {
             type: 'string',
-            description: 'Ein bis zwei Sätze auf Deutsch, in der Du-Form.',
+            description: 'Ein bis zwei Sätze auf Deutsch, in der Du-Form: woran man erkennt, dass es erledigt ist.',
+          },
+          howTo: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 2,
+            maxItems: 4,
+            description:
+              'Zwei bis vier konkrete Handlungsschritte auf Deutsch, in der Du-Form. Jeder Schritt sagt, was die Person tatsächlich tut – nicht, warum es gut wäre.',
+          },
+          track: {
+            type: 'string',
+            enum: ['main', 'side1', 'side2'],
+            description:
+              '"main" für den Weg zum Hauptziel, "side1"/"side2" nur für genannte Nebenziele.',
           },
           type: { type: 'string', enum: ['quest', 'habit', 'milestone'] },
           xpReward: { type: 'integer', enum: [50, 75, 100, 125, 150, 200] },
@@ -74,6 +88,8 @@ const TREE_SCHEMA = {
           'key',
           'title',
           'description',
+          'howTo',
+          'track',
           'type',
           'xpReward',
           'stage',
@@ -89,18 +105,23 @@ const TREE_SCHEMA = {
 
 const SYSTEM_PROMPT = `Du entwirfst persönliche Entwicklungs-Skill-Trees.
 
-Für einen Lebensbereich baust du einen Baum aus 6 bis 9 Knoten, der zur beschriebenen Person passt.
+Du baust einen Baum aus 7 bis 10 Knoten, der die Person Schritt für Schritt zu ihrem HAUPTZIEL führt. Der Baum ist eine Anleitung, kein Tagebuch: Nach jedem Knoten muss klar sein, was als Nächstes zu tun ist.
+
+Hauptweg und Nebenwege:
+- Die Knoten mit track "main" bilden EINEN durchgehenden Weg zum Hauptziel. Der letzte Knoten dieses Wegs ist das Hauptziel selbst, als Meilenstein formuliert.
+- Für jedes genannte Nebenziel legst du einen eigenen Strang mit track "side1" bzw. "side2" an (je 2 bis 3 Knoten). Nenne einen Nebenweg-Track nur, wenn es dazu wirklich ein Nebenziel gibt.
+- Nebenwege dürfen an den Hauptweg andocken: Ein Knoten mit track "side1" darf einen Knoten des Hauptwegs als Voraussetzung haben. Der Hauptweg hängt dagegen NIE von einem Nebenweg ab.
 
 Aufbau:
 - Sortiere die Knoten so, dass Voraussetzungen immer VOR den Knoten stehen, die sie brauchen. "prerequisites" darf ausschließlich Keys nennen, die weiter oben in der Liste stehen.
-- Beginne mit ein bis zwei Einstiegsknoten ohne Voraussetzungen.
-- Baue echte Verzweigungen: nicht eine einzige Kette, sondern parallele Pfade, die sich an den gewählten Schwerpunkten orientieren.
+- Beginne mit genau einem Einstiegsknoten ohne Voraussetzungen auf dem Hauptweg.
 - "stage" beschreibt die Höhe im Baum: 0 = Grundlage, 1 = Routine, 2 = Ausbau, 3 = Meisterschaft. Ein Knoten hat nie eine kleinere stage als seine Voraussetzungen.
 
 Inhalt:
 - Schreibe auf Deutsch, in der Du-Form.
 - Jeder Knoten muss konkret und überprüfbar sein ("Vier Wochen lang zweimal pro Woche trainiert"), nicht vage ("fitter werden").
-- Richte die Knoten an den genannten Schwerpunkten und am Ziel der Person aus. Wer nichts zu einem Thema gesagt hat, bekommt dazu auch keine Knoten.
+- "howTo" ist der wichtigste Teil: zwei bis vier Schritte, die sagen, was die Person konkret TUT. Nenne Mengen, Zeitpunkte und Auswahlkriterien ("20 Minuten nach dem Aufstehen", "drei Anbieter vergleichen"). Keine Motivationssätze, keine Begründungen.
+- Richte alles am Hauptziel aus. Ein Knoten, der nicht auf das Haupt- oder ein Nebenziel einzahlt, gehört nicht in den Baum.
 - Passe die Einstiegshöhe an den Erfahrungsstand an: Fortgeschrittene brauchen keine Anfängerschritte als Meisterschaftsziel.
 - Die XP-Belohnung folgt dem Aufwand: 50–75 für kleine Schritte, 100–125 für mittlere, 150–200 für echte Meilensteine.
 
@@ -116,6 +137,7 @@ interface TreeRequest {
   /** Existing areas this one overlaps with, e.g. Spanish and communication. */
   overlaps?: string[];
   goalText?: string;
+  sideGoals?: string[];
 }
 
 Deno.serve(async (req: Request) => {
@@ -173,9 +195,15 @@ Deno.serve(async (req: Request) => {
           ', ',
         )}. Baue ein bis zwei Knoten ein, die beides gleichzeitig voranbringen.`
       : null,
-    payload.goalText ? `Eigenes Ziel: ${payload.goalText}` : null,
+    payload.goalText
+      ? `HAUPTZIEL: ${payload.goalText}`
+      : 'HAUPTZIEL: nicht genannt – leite ein sinnvolles Hauptziel aus Bereich, Erfahrungsstand und Schwerpunkten ab.',
+    ...(payload.sideGoals ?? [])
+      .filter((goal) => typeof goal === 'string' && goal.trim() !== '')
+      .slice(0, 2)
+      .map((goal, index) => `Nebenziel ${index + 1} (track "side${index + 1}"): ${goal}`),
     '',
-    'Entwirf den passenden Skill-Tree.',
+    'Entwirf den Skill-Tree, der genau zu diesem Hauptziel führt.',
   ]
     .filter(Boolean)
     .join('\n');

@@ -1,5 +1,6 @@
 import type {
   Area,
+  AreaTrack,
   Goal,
   LogEntry,
   NodeType,
@@ -7,7 +8,7 @@ import type {
   SuggestedActivity,
 } from '../types/models';
 import { createId } from '../lib/id';
-import { nodeDepths, recomputeNodeStatuses } from '../lib/tree';
+import { MAIN_TRACK_ID, nodeDepths, recomputeNodeStatuses } from '../lib/tree';
 import { GOAL_XP, xpForNode } from '../lib/xp';
 
 /**
@@ -23,6 +24,8 @@ export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 interface NodeTemplate {
   /** Unique within its area; referenced by `prerequisites`. */
   key: string;
+  /** Concrete steps for doing it – the catalog's answer to "und wie?". */
+  howTo?: string[];
   title: string;
   description: string;
   prerequisites: string[];
@@ -55,6 +58,8 @@ export interface OnboardingAreaConfig {
   focusOptions: { tag: string; label: string }[];
   goalPrompt: string;
   goalPlaceholder: string;
+  /** One-click examples – the fastest way to make someone concrete. */
+  goalExamples: string[];
   templates: NodeTemplate[];
 }
 
@@ -123,9 +128,19 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     ],
     goalPrompt: 'Hast du ein konkretes Ziel für diesen Bereich?',
     goalPlaceholder: 'z. B. 12 Bücher in diesem Jahr lesen',
+    goalExamples: [
+      '12 Sachbücher in diesem Jahr lesen',
+      'Ein Thema so verstehen, dass ich es erklären kann',
+      'Jeden Tag 20 Minuten lernen – drei Monate am Stück',
+    ],
     templates: [
       {
         key: 'first-book',
+        howTo: [
+          'Wähle ein Buch zu einer Frage, die dich gerade wirklich beschäftigt.',
+          'Leg eine feste Zeit fest – z. B. 20 Minuten nach dem Aufstehen.',
+          'Notiere nach jedem Kapitel einen Satz, der hängen geblieben ist.',
+        ],
         title: 'Erstes Buch fertiggelesen',
         description: 'Ein Sachbuch deiner Wahl komplett durchgelesen.',
         prerequisites: [],
@@ -135,6 +150,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'learn-source',
+        howTo: [
+          'Sammle 10 Kanäle, Kurse oder Newsletter, die du schon kennst.',
+          'Streiche alles, was du zuletzt nur nebenbei konsumiert hast.',
+          'Behalte 3 bis 5 – zu viele Quellen sind der Grund, warum nichts hängen bleibt.',
+        ],
         title: 'Lernquellen kuratiert',
         description:
           'Eine Liste mit Kanälen, Kursen oder Newslettern, denen du wirklich folgen willst.',
@@ -146,6 +166,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'routine',
+        howTo: [
+          'Setz dir eine Mindestmenge, die auch an schlechten Tagen geht (5 Minuten).',
+          'Häng sie an etwas, das du ohnehin täglich tust.',
+          'Hak jeden Tag ab – die Kette nicht zu unterbrechen ist der eigentliche Trick.',
+        ],
         title: 'Lese-Routine etabliert',
         description: 'Vier Wochen in Folge regelmäßig gelesen oder gelernt.',
         prerequisites: ['first-book'],
@@ -155,6 +180,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'notes',
+        howTo: [
+          'Entscheide dich für einen Ort: App oder Heft, aber nur einen.',
+          'Halte pro Quelle drei Dinge fest: Kernaussage, Beispiel, was du ändern willst.',
+          'Geh einmal pro Woche fünf Minuten durch die neuen Notizen.',
+        ],
         title: 'Notiz-System aufgebaut',
         description:
           'Ein System, in dem du Gelerntes festhältst und zuverlässig wiederfindest.',
@@ -166,6 +196,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'five-books',
+        howTo: [
+          'Leg die nächsten zwei Bücher schon jetzt fest, damit keine Lücke entsteht.',
+          'Brich Bücher ab, die dir nichts geben – Durchhalten ist hier kein Wert an sich.',
+          'Notiere zu jedem Buch die eine Sache, die du übernommen hast.',
+        ],
         title: '5 Bücher gelesen',
         description: 'Fünf Bücher komplett durchgearbeitet.',
         prerequisites: ['routine'],
@@ -176,6 +211,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'summary',
+        howTo: [
+          'Schreib aus dem Kopf auf, was hängen geblieben ist – erst danach nachschlagen.',
+          'Kürze auf eine Seite: Kernaussage, drei Argumente, dein Fazit.',
+          'Was du nicht in eigenen Worten erklären kannst, hast du noch nicht verstanden.',
+        ],
         title: 'Erste Zusammenfassung geschrieben',
         description: 'Ein Buch oder Thema in eigenen Worten zusammengefasst.',
         prerequisites: ['routine'],
@@ -185,6 +225,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'teach',
+        howTo: [
+          'Such dir eine Person, die das Thema nicht kennt.',
+          'Erklär es in fünf Minuten ohne Fachbegriffe.',
+          'Notiere die Stellen, an denen du ins Stocken kamst – das sind deine Lücken.',
+        ],
         title: 'Wissen weitergegeben',
         description: 'Jemandem etwas Gelerntes verständlich erklärt.',
         prerequisites: ['summary'],
@@ -195,6 +240,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'ten-books',
+        howTo: [
+          'Rechne aus, wie viele Seiten pro Tag das bedeutet – meist weniger als gedacht.',
+          'Halte einen kurzen Vorrat an ungelesenen Büchern bereit.',
+          'Zähl mit, aber lass die Zahl nicht die Auswahl bestimmen.',
+        ],
         title: '10 Bücher pro Jahr',
         description: 'Zehn Bücher innerhalb eines Jahres gelesen.',
         prerequisites: ['five-books'],
@@ -205,6 +255,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'deep-dive',
+        howTo: [
+          'Formuliere die Frage, die du am Ende beantworten können willst.',
+          'Nimm mindestens drei Quellen, die sich widersprechen dürfen.',
+          'Schreib zum Schluss deine eigene Antwort auf – mit Begründung.',
+        ],
         title: 'Thema in die Tiefe durchdrungen',
         description:
           'Ein Thema aus mehreren Quellen erarbeitet, bis du es sicher erklären kannst.',
@@ -243,9 +298,19 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     ],
     goalPrompt: 'Hast du ein konkretes Ziel für diesen Bereich?',
     goalPlaceholder: 'z. B. einen Vortrag im Team halten',
+    goalExamples: [
+      'Einen Vortrag vor dem Team halten',
+      'Auf Fremde zugehen, ohne mich zu überwinden',
+      'Ein schwieriges Gespräch führen, das ich aufschiebe',
+    ],
     templates: [
       {
         key: 'listening-basics',
+        howTo: [
+          'Lies oder schau eine Einführung zu aktivem Zuhören.',
+          'Nimm dir für das nächste Gespräch eine Sache vor: nicht unterbrechen.',
+          'Fass am Ende zusammen, was du verstanden hast, und lass es bestätigen.',
+        ],
         title: 'Grundlagen aktives Zuhören',
         description:
           'Prinzipien des aktiven Zuhörens gelernt und bewusst ausprobiert.',
@@ -256,6 +321,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'rhetoric-basics',
+        howTo: [
+          'Nimm ein Buch oder einen Kurs und arbeite ihn wirklich durch.',
+          'Schreib nach jedem Kapitel eine Technik auf, die du ausprobieren willst.',
+          'Probier jede Technik einmal aus, bevor du weiterliest.',
+        ],
         title: 'Rhetorik-Grundlagen durchgearbeitet',
         description: 'Ein Buch oder ein Kurs zu Rhetorik und Kommunikation.',
         prerequisites: [],
@@ -265,6 +335,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'apply-technique',
+        howTo: [
+          'Wähle eine einzige Technik für die ganze Woche.',
+          'Setz sie bewusst in mindestens drei Gesprächen ein.',
+          'Notiere abends kurz, wie es sich angefühlt hat und was passiert ist.',
+        ],
         title: 'Technik bewusst angewandt',
         description:
           'Eine gelernte Gesprächstechnik mehrfach im Alltag eingesetzt.',
@@ -275,6 +350,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'ask-deeper',
+        howTo: [
+          'Stell in jedem Gespräch mindestens zwei Nachfragen zur selben Sache.',
+          'Nutze offene Fragen: „Wie kam es dazu?" statt „War das gut?"',
+          'Achte darauf, ob dein Gegenüber mehr erzählt als sonst.',
+        ],
         title: 'Echtes Interesse gezeigt',
         description:
           'In fünf Gesprächen bewusst nachgefragt statt nur zu antworten.',
@@ -286,6 +366,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'stranger',
+        howTo: [
+          'Such eine Alltagssituation mit natürlichem Anlass: Schlange, Kurs, Bahn.',
+          'Beginne mit einer Beobachtung statt mit einer Frage.',
+          'Ein kurzes Gespräch reicht – es geht um den Anfang, nicht um die Länge.',
+        ],
         title: 'Gespräch mit Fremdem begonnen',
         description: 'Aus eigener Initiative ein Gespräch gestartet.',
         prerequisites: ['apply-technique'],
@@ -296,6 +381,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'group',
+        howTo: [
+          'Melde dich in einer Runde zu Wort, in der du sonst schweigst.',
+          'Bereite einen Gedanken vor, den du beitragen willst.',
+          'Sprich langsamer als du willst und mach eine Pause nach dem Kernsatz.',
+        ],
         title: 'Vor einer Gruppe gesprochen',
         description: 'Einen Beitrag vor mehreren Personen gehalten.',
         prerequisites: ['apply-technique'],
@@ -306,6 +396,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'difficult-talk',
+        howTo: [
+          'Schreib vorher auf, was du erreichen willst – und was nicht.',
+          'Beginne mit deiner Wahrnehmung statt mit einem Vorwurf.',
+          'Plane das Gespräch zu einem Zeitpunkt, an dem beide Ruhe haben.',
+        ],
         title: 'Schwieriges Gespräch geführt',
         description:
           'Ein unangenehmes Thema ruhig und klar angesprochen statt es zu vermeiden.',
@@ -317,6 +412,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'presentation',
+        howTo: [
+          'Bau sie um eine einzige Kernbotschaft herum.',
+          'Übe einmal laut und vollständig, nicht nur im Kopf.',
+          'Halte den Einstieg und den Schluss wörtlich bereit – der Rest darf frei sein.',
+        ],
         title: 'Präsentation gehalten',
         description: 'Eine vorbereitete Präsentation souverän gehalten.',
         prerequisites: ['group'],
@@ -327,6 +427,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'natural',
+        howTo: [
+          'Behalte eine Technik so lange, bis du sie nicht mehr bewusst wählst.',
+          'Such dir alle paar Wochen eine neue Situation, die dir noch unangenehm ist.',
+          'Blick monatlich zurück: Was war vor drei Monaten noch schwer?',
+        ],
         title: 'Kommunikation wird selbstverständlich',
         description:
           'Drei Monate lang bewusst kommuniziert – es fühlt sich normal an.',
@@ -367,9 +472,19 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     ],
     goalPrompt: 'Hast du ein persönliches Ziel für deine Gesundheit?',
     goalPlaceholder: 'z. B. entspannt 5 km am Stück laufen',
+    goalExamples: [
+      '5 km am Stück laufen, ohne zu gehen',
+      'Drei Monate lang zweimal pro Woche trainieren',
+      'Ausgeruht aufwachen – sieben Stunden Schlaf als Regel',
+    ],
     templates: [
       {
         key: 'baseline',
+        howTo: [
+          'Notiere ohne Wertung, wie oft du dich in einer normalen Woche bewegst.',
+          'Halte fest, wie du dich morgens fühlst – Energie, Schlaf, Laune.',
+          'Das ist dein Ausgangspunkt, kein Urteil.',
+        ],
         title: 'Ausgangslage erfasst',
         description:
           'Ehrlich notiert, wo du stehst und wie du dich fühlst – ohne Bewertung.',
@@ -380,6 +495,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'find-sport',
+        howTo: [
+          'Probier in vier Wochen drei verschiedene Sachen aus.',
+          'Bewerte danach nur eine Frage: Würdest du nächste Woche wieder hingehen?',
+          'Nimm das, worauf du dich freust – nicht das mit dem besten Ruf.',
+        ],
         title: 'Bewegung gefunden, die Spaß macht',
         description:
           'Verschiedenes ausprobiert und etwas gefunden, das du gern machst.',
@@ -390,6 +510,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'sleep-routine',
+        howTo: [
+          'Leg eine feste Aufstehzeit fest, auch am Wochenende.',
+          'Bildschirme eine halbe Stunde vor dem Schlafen weglegen.',
+          'Halte es zwei Wochen durch, bevor du beurteilst, ob es wirkt.',
+        ],
         title: 'Schlafroutine aufgebaut',
         description: 'Zwei Wochen lang regelmäßige Schlafenszeiten gehalten.',
         prerequisites: ['baseline'],
@@ -400,6 +525,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'twice-weekly',
+        howTo: [
+          'Trag zwei feste Termine in den Kalender – wie eine Verabredung.',
+          'Leg die Sachen am Vorabend bereit.',
+          'Bei wenig Zeit die kurze Version machen statt ausfallen lassen.',
+        ],
         title: '2x Bewegung pro Woche – 4 Wochen',
         description: 'Vier Wochen lang zweimal pro Woche aktiv gewesen.',
         prerequisites: ['find-sport'],
@@ -409,6 +539,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'strength-base',
+        howTo: [
+          'Lern die Grundbewegungen mit leichtem Gewicht sauber.',
+          'Lass die Technik einmal von jemandem anschauen, der es kann.',
+          'Steigere erst, wenn die Ausführung über alle Wiederholungen stabil bleibt.',
+        ],
         title: 'Grundübungen sauber gelernt',
         description:
           'Die wichtigsten Bewegungen mit sauberer Technik ausgeführt.',
@@ -420,6 +555,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'endurance-base',
+        howTo: [
+          'Wähle eine Distanz, die etwa 20 % über deiner jetzigen liegt.',
+          'Bau langsam auf – lieber öfter kurz als einmal zu viel.',
+          'Tempo so, dass du dich noch unterhalten könntest.',
+        ],
         title: 'Erste Ausdauer-Distanz geschafft',
         description:
           'Eine Distanz am Stück geschafft, die dir vorher zu weit vorkam.',
@@ -431,6 +571,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'team-regular',
+        howTo: [
+          'Such eine Gruppe mit festem Termin statt loser Verabredungen.',
+          'Geh dreimal hin, bevor du entscheidest.',
+          'Feste Zeiten mit anderen tragen an den Tagen, an denen die Motivation fehlt.',
+        ],
         title: 'Fester Teil einer Gruppe',
         description:
           'Regelmäßig mit anderen Sport gemacht – Verein, Gruppe oder Freunde.',
@@ -442,6 +587,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'mobility-routine',
+        howTo: [
+          'Nimm zehn Minuten an festen Tagen, nicht „wenn Zeit ist".',
+          'Konzentrier dich auf die zwei Stellen, die bei dir wirklich zwicken.',
+          'Kurz und regelmäßig schlägt lang und selten.',
+        ],
         title: 'Beweglichkeits-Routine etabliert',
         description: 'Regelmäßig gedehnt oder Yoga gemacht – vier Wochen am Stück.',
         prerequisites: ['twice-weekly'],
@@ -452,6 +602,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'outdoor-tour',
+        howTo: [
+          'Such eine Route, die etwas über deiner gewohnten Länge liegt.',
+          'Plane Verpflegung, Wetter und Rückweg vorher.',
+          'Geh los, auch wenn das Wetter nur mittelgut ist.',
+        ],
         title: 'Größere Tour gemacht',
         description: 'Eine Wanderung oder Tour, auf die du stolz bist.',
         prerequisites: ['twice-weekly'],
@@ -462,6 +617,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'three-weekly',
+        howTo: [
+          'Erhöhe erst, wenn zweimal pro Woche vier Wochen lang stabil lief.',
+          'Leg die dritte Einheit auf einen Tag mit wenig Terminen.',
+          'Plane eine leichtere Einheit ein – nicht jede muss hart sein.',
+        ],
         title: '3x Training pro Woche – 4 Wochen',
         description: 'Die Routine auf dreimal pro Woche gesteigert und gehalten.',
         prerequisites: ['twice-weekly'],
@@ -471,6 +631,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'personal-best',
+        howTo: [
+          'Wähle eine Messgröße, die zu deinem Sport passt.',
+          'Setz sie knapp über deinen aktuellen Stand.',
+          'Der Maßstab bist du vor drei Monaten, niemand sonst.',
+        ],
         title: 'Persönliche Bestleistung',
         description:
           'Eine selbst gewählte Bestleistung erreicht – dein Maßstab, niemand sonst.',
@@ -509,9 +674,19 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     ],
     goalPrompt: 'Gibt es etwas, das du in diesem Bereich erreichen willst?',
     goalPlaceholder: 'z. B. jeden Sonntag eine Wochenreflexion',
+    goalExamples: [
+      'Jeden Sonntag eine Wochenreflexion schreiben',
+      'Meine fünf Kernwerte kennen und danach entscheiden',
+      'Etwas regelmäßig beitragen, das über mich hinausgeht',
+    ],
     templates: [
       {
         key: 'values',
+        howTo: [
+          'Schreib zehn Dinge auf, die dir wichtig sind.',
+          'Streiche so lange, bis fünf übrig sind – das tut absichtlich weh.',
+          'Prüfe bei jedem: Habe ich dafür in den letzten Wochen Zeit aufgewendet?',
+        ],
         title: 'Kernwerte formuliert',
         description:
           'Die 3–5 Werte aufgeschrieben, die dir wirklich wichtig sind.',
@@ -522,6 +697,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'journal-start',
+        howTo: [
+          'Nimm dir fünf Minuten zur selben Tageszeit.',
+          'Beantworte drei feste Fragen statt frei zu schreiben.',
+          'Zwei Wochen durchhalten, bevor du entscheidest, ob es etwas bringt.',
+        ],
         title: 'Journal-Routine gestartet',
         description: 'Zwei Wochen regelmäßig reflektiert oder journaled.',
         prerequisites: [],
@@ -532,6 +712,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'year-goals',
+        howTo: [
+          'Leite aus jedem Kernwert höchstens ein Ziel ab.',
+          'Formuliere jedes so, dass du am Jahresende Ja oder Nein sagen kannst.',
+          'Mehr als drei Ziele bedeutet, dass keines wirklich zählt.',
+        ],
         title: 'Jahresziele gesetzt',
         description:
           'Konkrete Ziele für dieses Jahr aus deinen Werten abgeleitet.',
@@ -543,6 +728,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'meaningful-act',
+        howTo: [
+          'Wähle etwas, das jemand anderem konkret nützt.',
+          'Klein und tatsächlich getan schlägt groß und geplant.',
+          'Notiere danach, wie es sich angefühlt hat.',
+        ],
         title: 'Sinnstiftende Handlung umgesetzt',
         description:
           'Etwas getan, das über dich hinaus wirkt – helfen, beitragen, schaffen.',
@@ -554,6 +744,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'monthly-review',
+        howTo: [
+          'Setz einen festen Termin am Monatsende.',
+          'Drei Fragen: Was lief gut, was nicht, was ändere ich?',
+          'Schreib die Antworten auf – im Kopf zählt es nicht.',
+        ],
         title: 'Monatlicher Rückblick etabliert',
         description: 'Drei Monate in Folge einen Monatsrückblick gemacht.',
         prerequisites: ['values'],
@@ -563,6 +758,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'align',
+        howTo: [
+          'Such die eine Gewohnheit, die am deutlichsten gegen deine Werte läuft.',
+          'Ändere sie für vier Wochen, nicht für immer.',
+          'Halte fest, was der Wegfall tatsächlich verändert hat.',
+        ],
         title: 'Alltag an Werten ausgerichtet',
         description:
           'Eine Gewohnheit bewusst geändert, weil sie nicht zu deinen Werten passte.',
@@ -573,6 +773,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'vision',
+        howTo: [
+          'Beschreib einen normalen Dienstag in fünf Jahren.',
+          'Konkret werden: Wo, mit wem, womit verbringst du den Tag?',
+          'Prüfe, welcher heutige Schritt in diese Richtung zeigt.',
+        ],
         title: 'Lebensvision aufgeschrieben',
         description: 'Ein klares Bild, wohin dein Weg langfristig führen soll.',
         prerequisites: ['monthly-review'],
@@ -610,9 +815,19 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
     ],
     goalPrompt: 'Hast du ein finanzielles Ziel?',
     goalPlaceholder: 'z. B. drei Monatsausgaben als Rücklage',
+    goalExamples: [
+      'Drei Monatsausgaben als Rücklage aufbauen',
+      'Ein Jahr lang jeden Monat mein Budget führen',
+      'Meine Sparquote auf 20 % bringen und halten',
+    ],
     templates: [
       {
         key: 'overview',
+        howTo: [
+          'Sammle einen Monat lang alle Einnahmen und Ausgaben an einer Stelle.',
+          'Sortiere sie in wenige Kategorien – fünf bis sieben reichen.',
+          'Rechne aus, was am Monatsende übrig bleibt.',
+        ],
         title: 'Überblick über Einnahmen & Ausgaben',
         description: 'Alle Einnahmen und Ausgaben eines Monats erfasst.',
         prerequisites: [],
@@ -622,6 +837,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'basics',
+        howTo: [
+          'Klär vier Begriffe: Budget, Rücklage, Zinseszins, breite Streuung.',
+          'Nutze neutrale Quellen ohne Produktverkauf.',
+          'Erklär jeden Begriff in einem Satz in eigenen Worten.',
+        ],
         title: 'Finanz-Grundwissen aufgebaut',
         description:
           'Grundbegriffe verstanden: Budget, Rücklage, Zinseszins, breite Streuung.',
@@ -633,6 +853,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'budget-month',
+        howTo: [
+          'Leg pro Kategorie vorab einen Betrag fest.',
+          'Trag Ausgaben laufend ein, nicht am Monatsende aus dem Gedächtnis.',
+          'Am Monatsende vergleichen und die Beträge für den nächsten anpassen.',
+        ],
         title: 'Budget einen Monat geführt',
         description: 'Einen vollen Monat bewusst mit Budget gelebt.',
         prerequisites: ['overview'],
@@ -643,6 +868,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'first-savings',
+        howTo: [
+          'Lege einen festen Betrag fest, der auch in einem schlechten Monat geht.',
+          'Richte einen Dauerauftrag auf ein getrenntes Konto ein.',
+          'Direkt nach dem Geldeingang, nicht was am Ende übrig bleibt.',
+        ],
         title: 'Erste Rücklage gebildet',
         description: 'Zum ersten Mal bewusst Geld zur Seite gelegt.',
         prerequisites: ['overview'],
@@ -652,6 +882,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'emergency-fund',
+        howTo: [
+          'Rechne aus, was du in einem Monat wirklich brauchst.',
+          'Setz dir daraus ein Ziel, das dir Ruhe gibt.',
+          'Halte das Geld getrennt und jederzeit verfügbar.',
+        ],
         title: 'Notgroschen aufgebaut',
         description: 'Eine Reserve für Unvorhergesehenes zur Seite gelegt.',
         prerequisites: ['first-savings'],
@@ -662,6 +897,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'savings-rate',
+        howTo: [
+          'Leg deinen Anteil als Prozentsatz fest, nicht als Restbetrag.',
+          'Prüfe ihn monatlich zusammen mit deinem Budget.',
+          'Passe ihn an, wenn er drei Monate lang nicht zu halten war.',
+        ],
         title: 'Sparquote gehalten',
         description:
           'Drei Monate in Folge deinen selbst gesetzten Sparanteil erreicht.',
@@ -672,6 +912,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'plan',
+        howTo: [
+          'Schreib auf, wofür du sparst und bis wann.',
+          'Zerleg jedes Ziel in Monatsbeträge.',
+          'Halte fest, was du bei einem unerwarteten Betrag tun würdest.',
+        ],
         title: 'Eigenen Finanzplan aufgeschrieben',
         description:
           'Festgehalten, wofür du sparst und in welchen Schritten du dahin kommst.',
@@ -682,6 +927,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'first-investment',
+        howTo: [
+          'Klär zuerst Rücklage und Schulden – in dieser Reihenfolge.',
+          'Lies dich unabhängig ein, bevor du irgendwo unterschreibst.',
+          'Entscheide selbst und nur, was du erklären kannst; diese App gibt keine Anlageempfehlungen.',
+        ],
         title: 'Erster Anlage-Schritt gemacht',
         description:
           'Nach eigener Recherche einen ersten, bewussten Schritt beim Anlegen gemacht.',
@@ -693,6 +943,11 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
       },
       {
         key: 'wealth-milestone',
+        howTo: [
+          'Setz einen Betrag, der für dich einen Unterschied macht.',
+          'Halte fest, woran du unterwegs erkennst, dass es vorangeht.',
+          'Prüfe einmal im Quartal, ob der Meilenstein noch der richtige ist.',
+        ],
         title: 'Selbst gesetzter Meilenstein erreicht',
         description: 'Einen eigenen Vermögens-Meilenstein erreicht.',
         prerequisites: ['plan'],
@@ -708,8 +963,15 @@ export const ONBOARDING_AREAS: OnboardingAreaConfig[] = [
 export interface AreaAnswer {
   experience: ExperienceLevel;
   tags: string[];
+  /** The main goal – the tree's main track leads exactly here. */
   goalText: string;
+  /** Optional secondary goals, each becoming its own side track. */
+  sideGoals: string[];
 }
+
+/** Track keys the AI may use; they are mapped to real track ids on assembly. */
+export const SIDE_TRACK_KEYS = ['side1', 'side2'] as const;
+export const MAX_SIDE_GOALS = SIDE_TRACK_KEYS.length;
 
 export type OnboardingAnswers = Record<string, AreaAnswer>;
 
@@ -728,10 +990,14 @@ export interface ResolvedNode {
   key: string;
   title: string;
   description: string;
+  /** Concrete steps for doing it – what turns the tree into instructions. */
+  howTo: string[];
   prerequisites: string[];
   xpReward: number;
   type: NodeType;
   stage: number;
+  /** 'main' or one of SIDE_TRACK_KEYS. */
+  track: string;
 }
 
 /** Node shape returned by the tree-generating edge function. */
@@ -739,10 +1005,12 @@ export interface AiNode {
   key?: unknown;
   title?: unknown;
   description?: unknown;
+  howTo?: unknown;
   prerequisites?: unknown;
   xpReward?: unknown;
   type?: unknown;
   stage?: unknown;
+  track?: unknown;
 }
 
 const NODE_TYPES: NodeType[] = ['quest', 'habit', 'milestone'];
@@ -763,7 +1031,11 @@ function nearestXp(value: unknown): number {
  * points at itself, or wires up a loop therefore cannot produce a tree with
  * permanently unreachable nodes.
  */
-export function sanitizeAiNodes(raw: AiNode[]): ResolvedNode[] {
+export function sanitizeAiNodes(
+  raw: AiNode[],
+  /** Side track keys the user actually has goals for. */
+  allowedTracks: string[] = [],
+): ResolvedNode[] {
   const seen = new Set<string>();
   const result: ResolvedNode[] = [];
 
@@ -780,17 +1052,32 @@ export function sanitizeAiNodes(raw: AiNode[]): ResolvedNode[] {
 
     const stageValue = typeof node.stage === 'number' ? Math.round(node.stage) : 0;
 
+    // A node on a side track the user never asked for belongs on the main one.
+    const track =
+      typeof node.track === 'string' &&
+      (SIDE_TRACK_KEYS as readonly string[]).includes(node.track) &&
+      allowedTracks.includes(node.track)
+        ? node.track
+        : MAIN_TRACK_ID;
+
     result.push({
       key,
       title,
       description:
         typeof node.description === 'string' ? node.description.trim() : '',
+      howTo: Array.isArray(node.howTo)
+        ? node.howTo
+            .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+            .map((s) => s.trim())
+            .slice(0, 5)
+        : [],
       prerequisites,
       xpReward: nearestXp(node.xpReward),
       type: NODE_TYPES.includes(node.type as NodeType)
         ? (node.type as NodeType)
         : 'quest',
       stage: Math.min(3, Math.max(0, stageValue)),
+      track,
     });
     seen.add(key);
   }
@@ -807,14 +1094,18 @@ function templateNodes(
     (t) => !t.requiresTag || answer.tags.includes(t.requiresTag),
   );
   const keys = new Set(selected.map((t) => t.key));
+  // Templates are generic and know nothing about personal goals, so they all
+  // form the main track.
   return selected.map((t) => ({
     key: t.key,
     title: t.title,
     description: t.description,
+    howTo: t.howTo ?? [],
     prerequisites: t.prerequisites.filter((k) => keys.has(k)),
     xpReward: t.xpReward,
     type: t.type,
     stage: t.stage,
+    track: MAIN_TRACK_ID,
   }));
 }
 
@@ -838,14 +1129,18 @@ export function materializeNodes(
   resolved: ResolvedNode[],
   completedThroughStage: number,
   now: string,
+  /** Track keys that exist for this area; unknown ones fall back to main. */
+  knownTracks: string[] = [],
 ): { nodes: SkillNode[]; startingXp: number } {
   const idByKey = new Map(resolved.map((n) => [n.key, createId()]));
 
   const nodes: SkillNode[] = resolved.map((n) => ({
     id: idByKey.get(n.key)!,
     areaId,
+    trackId: knownTracks.includes(n.track) ? n.track : MAIN_TRACK_ID,
     title: n.title,
     description: n.description,
+    howTo: n.howTo.length > 0 ? n.howTo : undefined,
     prerequisites: n.prerequisites
       .filter((k) => idByKey.has(k))
       .map((k) => idByKey.get(k)!),
@@ -867,7 +1162,33 @@ export function materializeNodes(
 }
 
 /** The area fields the caller decides on; the rest follows from the tree. */
-type AreaShell = Omit<Area, 'xp'>;
+type AreaShell = Omit<Area, 'xp' | 'tracks'>;
+
+/**
+ * Turns the stated goals into tracks. The main track always exists – it is
+ * what the app keeps pointing at – and carries the main goal as its headline,
+ * falling back to the area name when no goal was given.
+ */
+export function tracksFromAnswer(
+  answer: AreaAnswer,
+  areaName: string,
+): AreaTrack[] {
+  const main: AreaTrack = {
+    id: MAIN_TRACK_ID,
+    title: answer.goalText.trim() || areaName,
+    isMain: true,
+  };
+  const sides = answer.sideGoals
+    .map((goal) => goal.trim())
+    .filter(Boolean)
+    .slice(0, MAX_SIDE_GOALS)
+    .map((title, index) => ({
+      id: SIDE_TRACK_KEYS[index],
+      title,
+      isMain: false,
+    }));
+  return [main, ...sides];
+}
 
 /** Builds one complete area – tree, optional goal and the progress log entry. */
 function buildArea(
@@ -879,11 +1200,13 @@ function buildArea(
   /** Wording for the records this creates – onboarding vs. a later addition. */
   origin: { goalNote: string; progressNote: string },
 ): BuiltArea {
+  const tracks = tracksFromAnswer(answer, shell.name);
   const { nodes, startingXp } = materializeNodes(
     shell.id,
     resolved,
     completedThroughStage,
     now,
+    tracks.map((t) => t.id),
   );
 
   const goals: Goal[] = [];
@@ -911,7 +1234,7 @@ function buildArea(
     });
   }
 
-  return { area: { ...shell, xp: startingXp }, nodes, goals, logs };
+  return { area: { ...shell, xp: startingXp, tracks }, nodes, goals, logs };
 }
 
 function assembleArea(
@@ -973,6 +1296,7 @@ export const DEFAULT_ANSWER: AreaAnswer = {
   experience: 'beginner',
   tags: [],
   goalText: '',
+  sideGoals: [],
 };
 
 /**

@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStore } from './useAppStore';
 import { db } from '../data/db';
 import { useLocalRepository } from '../data/repository';
-import type { Area } from '../types/models';
+import type { Area, SkillNode } from '../types/models';
 import { xpForActivity } from '../lib/xp';
+import { dailyQuestBonus, dayKey } from '../lib/dailyQuest';
 
 // The store schedules its feedback overlays through `window`, which the node
 // test environment does not provide.
@@ -134,5 +135,84 @@ describe('deleteArea with overlaps', () => {
     expect(remaining).toHaveLength(1);
     expect(remaining[0].linkedAreaIds).toEqual([]);
     expect((await db.areas.get('spanish'))!.linkedAreaIds).toEqual([]);
+  });
+});
+
+describe('completing nodes', () => {
+  const node = (id: string, over: Partial<SkillNode> = {}): SkillNode => ({
+    id,
+    areaId: 'spanish',
+    title: `Skill ${id}`,
+    description: '',
+    prerequisites: [],
+    xpReward: 100,
+    status: 'available',
+    type: 'quest',
+    ...over,
+  });
+
+  beforeEach(async () => {
+    await reset([area('spanish')]);
+  });
+
+  it('lets a locked node be ticked off anyway', async () => {
+    useAppStore.setState({
+      nodes: [node('a'), node('b', { prerequisites: ['a'], status: 'locked' })],
+    });
+
+    await useAppStore.getState().completeNode('b');
+
+    const { nodes, areas } = useAppStore.getState();
+    expect(nodes.find((n) => n.id === 'b')!.status).toBe('completed');
+    // The skipped prerequisite stays open – nothing is auto-completed for you.
+    expect(nodes.find((n) => n.id === 'a')!.status).toBe('available');
+    expect(areas[0].xp).toBe(100);
+  });
+
+  it('refuses to complete the same node twice', async () => {
+    useAppStore.setState({ nodes: [node('a')] });
+
+    await useAppStore.getState().completeNode('a');
+    await useAppStore.getState().completeNode('a');
+
+    expect(useAppStore.getState().areas[0].xp).toBe(100);
+    expect(useAppStore.getState().logs).toHaveLength(1);
+  });
+
+  it('pays the daily-quest bonus once, on the quest node only', async () => {
+    const today = dayKey();
+    useAppStore.setState({
+      nodes: [node('a'), node('b')],
+      profile: {
+        id: 'profile',
+        name: 'Test',
+        createdAt: new Date().toISOString(),
+        dailyQuest: { day: today, nodeId: 'a', completed: false },
+      },
+    });
+
+    await useAppStore.getState().completeNode('b');
+    expect(useAppStore.getState().areas[0].xp).toBe(100);
+
+    await useAppStore.getState().completeNode('a');
+    expect(useAppStore.getState().areas[0].xp).toBe(
+      100 + 100 + dailyQuestBonus(100),
+    );
+    expect(useAppStore.getState().profile!.dailyQuest!.completed).toBe(true);
+  });
+
+  it('does not pay the bonus for a quest from an earlier day', async () => {
+    useAppStore.setState({
+      nodes: [node('a')],
+      profile: {
+        id: 'profile',
+        name: 'Test',
+        createdAt: new Date().toISOString(),
+        dailyQuest: { day: '2020-01-01', nodeId: 'a', completed: false },
+      },
+    });
+
+    await useAppStore.getState().completeNode('a');
+    expect(useAppStore.getState().areas[0].xp).toBe(100);
   });
 });

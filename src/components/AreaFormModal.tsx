@@ -110,9 +110,14 @@ export function AreaFormModal({ area, onClose }: AreaFormModalProps) {
             .map((id) => areas.find((a) => a.id === id)?.name)
             .filter((n): n is string => Boolean(n)),
           goalText,
+          sideGoals: [],
         });
         await addAreaWithTree(
-          buildCustomArea(shell, { experience, tags: [], goalText }, nodes),
+          buildCustomArea(
+            shell,
+            { experience, tags: [], goalText, sideGoals: [] },
+            nodes,
+          ),
         );
         onClose();
       } catch (e) {

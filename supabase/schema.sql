@@ -10,7 +10,9 @@ create table if not exists public.profiles (
   user_id uuid primary key references auth.users on delete cascade,
   name text not null,
   avatar text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- { day, nodeId, completed } – today's highlighted skill.
+  daily_quest jsonb
 );
 
 -- ------------------------------------------------------------------ areas --
@@ -27,6 +29,8 @@ create table if not exists public.areas (
   suggested_activities jsonb not null default '[]'::jsonb,
   -- Areas this one overlaps with (e.g. Spanish → knowledge + communication).
   linked_area_ids jsonb not null default '[]'::jsonb,
+  -- [{ id, title, isMain }] – the main goal's track plus side tracks.
+  tracks jsonb not null default '[]'::jsonb,
   primary key (user_id, id)
 );
 
@@ -35,8 +39,11 @@ create table if not exists public.nodes (
   user_id uuid not null references auth.users on delete cascade,
   id text not null,
   area_id text not null,
+  track_id text,
   title text not null,
   description text not null default '',
+  -- Concrete steps for actually doing this one.
+  how_to jsonb not null default '[]'::jsonb,
   prerequisites jsonb not null default '[]'::jsonb,
   xp_reward integer not null default 0,
   status text not null default 'locked',
@@ -146,6 +153,14 @@ alter table public.logs
   add column if not exists scope text;
 alter table public.goals
   add column if not exists size text;
+alter table public.profiles
+  add column if not exists daily_quest jsonb;
+alter table public.areas
+  add column if not exists tracks jsonb not null default '[]'::jsonb;
+alter table public.nodes
+  add column if not exists track_id text;
+alter table public.nodes
+  add column if not exists how_to jsonb not null default '[]'::jsonb;
 
 -- ------------------------------------------------------ row level security --
 alter table public.profiles     enable row level security;

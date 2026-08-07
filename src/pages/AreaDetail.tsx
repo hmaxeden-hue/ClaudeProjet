@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { levelFromXp } from '../lib/xp';
-import { nextStepForArea } from '../lib/tree';
+import { nextStepsByTrack } from '../lib/tree';
 import { XPBar } from '../components/XPBar';
 import { SkillTree } from '../components/SkillTree';
 import { NodeDetailModal } from '../components/NodeDetailModal';
@@ -12,6 +12,7 @@ import { ActivityFormModal } from '../components/ActivityFormModal';
 import { GoalsTab } from '../components/GoalsTab';
 import { ResourcesTab } from '../components/ResourcesTab';
 import { LogTab } from '../components/LogTab';
+import { HowToList } from '../components/HowToList';
 import { SuggestionsModal } from '../components/SuggestionsModal';
 import { useAuthStore } from '../store/useAuthStore';
 import type { SkillNode } from '../types/models';
@@ -32,6 +33,7 @@ export function AreaDetail() {
   const areas = useAppStore((s) => s.areas);
   const nodes = useAppStore((s) => s.nodes);
   const deleteArea = useAppStore((s) => s.deleteArea);
+  const completeNode = useAppStore((s) => s.completeNode);
 
   const [tab, setTab] = useState<Tab>('tree');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function AreaDetail() {
   }
 
   const level = levelFromXp(area.xp);
-  const nextStep = nextStepForArea(nodes, area.id);
+  const nextSteps = nextStepsByTrack(area, nodes);
   const selectedNode = areaNodes.find((n) => n.id === selectedNodeId) ?? null;
 
   const handleDeleteArea = async () => {
@@ -138,26 +140,51 @@ export function AreaDetail() {
 
       <XPBar xp={area.xp} color={area.color} />
 
-      {nextStep && (
-        <button
-          onClick={() => setSelectedNodeId(nextStep.id)}
-          className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:brightness-110"
+      {/* The next step, spelled out: what to do and how to do it. */}
+      {nextSteps.map(({ track, node }) => (
+        <div
+          key={track.id}
+          className="rounded-xl border px-4 py-3.5"
           style={{
-            borderColor: `${area.color}44`,
-            backgroundColor: `${area.color}0d`,
+            borderColor: track.isMain ? `${area.color}55` : '#1e293b',
+            backgroundColor: track.isMain ? `${area.color}0d` : 'transparent',
           }}
         >
-          <span className="text-xl">✨</span>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Empfohlener nächster Schritt
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                {track.isMain
+                  ? `★ Nächster Schritt zu: ${track.title}`
+                  : `Nebenweg: ${track.title}`}
+              </div>
+              <button
+                onClick={() => setSelectedNodeId(node.id)}
+                className="mt-0.5 text-left text-lg font-bold hover:underline"
+                style={{ color: track.isMain ? area.color : '#cbd5e1' }}
+              >
+                {node.title}
+              </button>
+              {node.description && (
+                <p className="mt-1 max-w-2xl text-sm text-slate-400">
+                  {node.description}
+                </p>
+              )}
             </div>
-            <div className="font-semibold" style={{ color: area.color }}>
-              {nextStep.title}
-            </div>
+            <button
+              onClick={() => void completeNode(node.id)}
+              className="shrink-0 rounded-lg px-4 py-2 text-sm font-bold text-slate-950 transition hover:brightness-110"
+              style={{ backgroundColor: track.isMain ? area.color : '#64748b' }}
+            >
+              ✓ Erledigt (+{node.xpReward} XP)
+            </button>
           </div>
-        </button>
-      )}
+          {node.howTo && node.howTo.length > 0 && (
+            <div className="mt-3 border-t border-slate-800/80 pt-3">
+              <HowToList steps={node.howTo} color={area.color} />
+            </div>
+          )}
+        </div>
+      ))}
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50 p-1">
@@ -203,8 +230,8 @@ export function AreaDetail() {
             </button>
           </div>
           <SkillTree
+            area={area}
             nodes={areaNodes}
-            color={area.color}
             onSelectNode={handleSelectNode}
           />
           <p className="text-center text-xs text-slate-600">

@@ -19,6 +19,7 @@ import { createId } from '../lib/id';
 import { levelFromXp, xpForActivity, xpForNode, type ActivityScope } from '../lib/xp';
 import { nodeDepths, recomputeNodeStatuses } from '../lib/tree';
 import { currentStreak } from '../lib/streak';
+import { dailyQuestBonus, dayKey, resolveDailyQuest } from '../lib/dailyQuest';
 import { findNewlyUnlocked } from '../lib/achievements';
 import { statsSnapshot } from '../lib/stats';
 import { publishMyStats } from '../data/groups';
@@ -85,6 +86,8 @@ interface AppState {
   deleteLog: (logId: string) => Promise<void>;
 
   completeNode: (nodeId: string) => Promise<void>;
+  /** Re-picks today's quest when the stored one is stale. */
+  refreshDailyQuest: () => Promise<void>;
   saveNode: (
     node: Omit<SkillNode, 'status' | 'xpReward'> & {
       status?: SkillNode['status'];
@@ -246,6 +249,7 @@ export const useAppStore = create<AppState>((set, get) => {
       }
       data.logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
       set({ ...data, status: 'ready' });
+      await get().refreshDailyQuest();
     },
 
     completeOnboarding: async ({
@@ -313,9 +317,11 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     completeNode: async (nodeId) => {
-      const { nodes } = get();
+      const { nodes, profile } = get();
       const node = nodes.find((n) => n.id === nodeId);
-      if (!node || node.status !== 'available') return;
+      // Locked nodes may be ticked off too – the tree suggests an order, it
+      // does not police it. Only completing something twice is prevented.
+      if (!node || node.status === 'completed') return;
 
       const completed: SkillNode = {
         ...node,
@@ -327,13 +333,54 @@ export const useAppStore = create<AppState>((set, get) => {
       );
       set({ nodes: updatedNodes });
       await repository.saveNodes(updatedNodes);
+
+      const quest = profile?.dailyQuest;
+      const isTodaysQuest =
+        quest?.nodeId === nodeId &&
+        quest.day === dayKey() &&
+        !quest.completed;
+      const bonus = isTodaysQuest ? dailyQuestBonus(node.xpReward) : 0;
+
+      if (isTodaysQuest && profile) {
+        const updated: Profile = {
+          ...profile,
+          dailyQuest: { ...quest, completed: true },
+        };
+        set({ profile: updated });
+        await repository.saveProfile(updated);
+      }
+
       await gainXp({
         areaIds: [node.areaId],
         nodeId: node.id,
-        description: `Skill abgeschlossen: ${node.title}`,
-        xp: node.xpReward,
+        description: bonus
+          ? `Tagesquest abgeschlossen: ${node.title}`
+          : `Skill abgeschlossen: ${node.title}`,
+        xp: node.xpReward + bonus,
       });
       await checkAchievements();
+      await get().refreshDailyQuest();
+    },
+
+    /**
+     * Makes sure the profile carries a quest for today. Called on start and
+     * when the dashboard mounts, so an app left open overnight rolls over.
+     */
+    refreshDailyQuest: async () => {
+      const { profile, nodes } = get();
+      if (!profile) return;
+      const next = resolveDailyQuest(profile.dailyQuest, nodes, dayKey());
+      const current = profile.dailyQuest;
+      if (
+        next?.day === current?.day &&
+        next?.nodeId === current?.nodeId &&
+        next?.completed === current?.completed
+      ) {
+        return;
+      }
+      const updated: Profile = { ...profile, dailyQuest: next ?? undefined };
+      set({ profile: updated });
+      await repository.saveProfile(updated);
     },
 
     saveNode: async (input) => {

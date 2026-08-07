@@ -55,7 +55,15 @@ const SUGGESTION_SCHEMA = {
           description: {
             type: 'string',
             description:
-              'Ein bis zwei Sätze, die erklären, was zu tun ist. Auf Deutsch.',
+              'Ein bis zwei Sätze, woran man erkennt, dass es erledigt ist. Auf Deutsch.',
+          },
+          howTo: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 2,
+            maxItems: 4,
+            description:
+              'Zwei bis vier konkrete Handlungsschritte auf Deutsch, in der Du-Form. Jeder Schritt sagt, was die Person tatsächlich tut.',
           },
           type: {
             type: 'string',
@@ -63,7 +71,7 @@ const SUGGESTION_SCHEMA = {
           },
           xpReward: { type: 'integer', enum: [50, 75, 100, 125, 150, 200] },
         },
-        required: ['title', 'description', 'type', 'xpReward'],
+        required: ['title', 'description', 'howTo', 'type', 'xpReward'],
         additionalProperties: false,
       },
     },
@@ -79,6 +87,7 @@ Du bekommst einen Lebensbereich, das aktuelle Level der Person und die Skills, d
 Regeln:
 - Schreibe auf Deutsch, in der Du-Form.
 - Jeder Vorschlag muss konkret und überprüfbar sein ("Drei Monate lang wöchentlich X"), nicht vage ("besser werden").
+- "howTo" sagt, was die Person konkret TUT: zwei bis vier Schritte mit Mengen und Zeitpunkten, keine Motivationssätze.
 - Schlage nichts vor, das inhaltlich schon in der Liste steht.
 - Steigere die Anforderung passend zum Level: kleine Schritte bei niedrigem Level, anspruchsvollere bei hohem.
 - Gesundheit: Fokus auf Konsistenz, Wohlbefinden und Leistungsfähigkeit. Keine Gewichts- oder Kalorienziele, keine extremen Vorgaben.
