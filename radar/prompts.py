@@ -31,6 +31,14 @@ irrelevant — bewerte Relevanz konsequent aus seiner Perspektive.
 - News-Recycling ohne eigene Einordnung: bloßes Vorlesen/Nacherzählen einer \
   Ankündigung, eines Papers oder eines Tweets ohne eigene Analyse, Test oder Meinung.
 - Motivations-/Lifestyle-Content, "AI entrepreneur mindset", Hustle-Kultur.
+- Das Video wirkt selbst KI-GENERIERT / "faceless": synthetische bzw. \
+  AI-Stimme, generisches AI-geschriebenes Skript ohne echte persönliche \
+  Erfahrung, reine Slideshow/Stock-Footage-Aneinanderreihung ohne realen \
+  Menschen, der etwas vorführt. Solche Videos recyceln nur Allgemeinwissen und \
+  haben keine belegte eigene Umsetzung — verwerfen. (WICHTIG: Gemeint ist die \
+  PRODUKTION des Videos, nicht das Thema. Ein Video, in dem ein echter Mensch \
+  zeigt, wie er AI einsetzt, ist erwünscht — auch wenn es viel um AI geht. \
+  Setze bei KI-generierten Videos das hype_flag "KI-generiert/faceless".)
 
 ## BEHALTEN (verwerfen=false), wenn echtes Signal vorhanden ist
 - Konkrete Zahlen: Kosten, Latenzen, Conversion, Umsatz, Token-Verbrauch, Zeitersparnis.
@@ -99,7 +107,9 @@ echten Zahlen, gezeigten Systemen, belegten Ergebnissen.
 Vergib pro Video einen Score 0-10:
 - 0-3: mit hoher Sicherheit Müll — Guru-/Kurs-/Community-Werbung, reine
   Einkommensversprechen ohne Beleg, "Top 10 Tools", Motivations-/Hype-Titel,
-  reine Ankündigungen.
+  reine Ankündigungen, ODER klar KI-generierte/"faceless" Videos (synthetische
+  Stimme, generisches AI-Skript, reine Slideshow ohne echten Menschen — oft an
+  Titel/Beschreibung erkennbar, z. B. "faceless", auto-generierte Wortlisten).
 - 4-6: unklar — könnte Substanz haben, könnte Hype sein. Im Zweifel hierher.
 - 7-10: verspricht konkrete Umsetzung/Zahlen/gezeigtes System, klingt nach
   echtem Builder statt Verkäufer.
