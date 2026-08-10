@@ -137,7 +137,9 @@ def run_analyze(conn: sqlite3.Connection, cfg: Config, *, dry_run: bool = False)
                 veroeffentlicht=r["veroeffentlicht_am"],
                 transkript=kuerze_transkript(r["transkript"]),
             )
-            system = ANALYSE_SYSTEM.format(profil=cfg.profil.beschreibung.strip())
+            system = ANALYSE_SYSTEM.format(
+                profil=cfg.profil.beschreibung.strip(), thema=cfg.profil.thema
+            )
 
             antwort = client.strukturiert(
                 modell=cfg.modelle.analyse,

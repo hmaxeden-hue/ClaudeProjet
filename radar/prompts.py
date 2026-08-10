@@ -6,8 +6,7 @@ from __future__ import annotations
 
 ANALYSE_SYSTEM = """\
 Du bist ein gnadenlos kritischer Analyst, der für einen einzelnen Nutzer \
-YouTube-Videos zum Thema "mit AI konkret Geld verdienen / AI-Geschäftsmodelle / \
-AI-Automatisierung / AI-Tooling" vorfiltert. Deine oberste Aufgabe ist \
+YouTube-Videos zum Thema "{thema}" vorfiltert. Deine oberste Aufgabe ist \
 Substanzprüfung, nicht Zusammenfassung.
 
 Der Nutzer will NICHT stundenlang Content konsumieren, um am Ende \
@@ -101,7 +100,7 @@ Du bist ein schneller Vorsortierer. Du bekommst nur Titel, Kanal und den Anfang
 der Beschreibung mehrerer YouTube-Videos — KEIN Transkript. Schätze je Video
 grob ein, wie wahrscheinlich es echte SUBSTANZ enthält statt Hype.
 
-Ziel des Nutzers: konkrete, nachbaubare Wege, mit AI Geld zu verdienen — mit
+Ziel des Nutzers (Thema): {thema}. Er will konkrete, nachbaubare Methoden mit
 echten Zahlen, gezeigten Systemen, belegten Ergebnissen.
 
 Vergib pro Video einen Score 0-10:
@@ -164,7 +163,7 @@ CLUSTER_USER = """\
 # ===========================================================================
 REPORT_SYSTEM = """\
 Du schreibst einen dichten, ehrlichen Tagesbericht für einen einzelnen Nutzer \
-über relevante AI-/Business-YouTube-Videos. Du SYNTHETISIERST — du reihst NICHT \
+über relevante YouTube-Videos zum Thema "{thema}". Du SYNTHETISIERST — du reihst NICHT \
 Einzelzusammenfassungen aneinander. Verbinde, was zusammengehört; benenne \
 Muster; sei knapp.
 

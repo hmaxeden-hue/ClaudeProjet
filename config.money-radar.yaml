@@ -1,0 +1,135 @@
+# ===========================================================================
+# Money Radar — Konfiguration (allgemeine Business-/Geld-Methoden, nicht nur AI)
+# Zweite Radar-Instanz: eigener Port + eigener Dienst-Name.
+# In den Zweit-Ordner kopieren als: config.yaml
+# ===========================================================================
+
+profil:
+  # Fokus/Thema dieses Radars — wird in die Prompts injiziert.
+  thema: >
+    ein Business aufbauen / konkrete, belegte Methoden, um (viel) Geld zu
+    verdienen (jedes Geschäftsmodell, nicht nur AI)
+  beschreibung: >
+    Solo-Unternehmer/Builder in der Schweiz mit technischem Hintergrund
+    (TypeScript, SvelteKit), der konkrete, belegte Wege sucht, ein Business
+    aufzubauen und (viel) Geld zu verdienen — offen über Modelle hinweg:
+    Software/Micro-SaaS, digitale Produkte, Dienstleistungen/Automatisierung,
+    E-Commerce, lokale/"langweilige" Nischen-Geschäfte, Übernahme/Acquisition.
+    ENTSCHEIDEND ist harte Substanz: echte Zahlen (Umsatz, Kosten, Marge,
+    Zeitaufwand), gezeigte Umsetzung, nachvollziehbare Systeme, benannte
+    Fehlschläge — von echten Operatorn, nicht von Verkäufern. Bevorzugt
+    realistisch für eine Einzelperson startbar.
+    NICHT interessiert an: reinem Kursverkauf, Coaching-/Community-Werbung, MLM,
+    unbelegten Einkommensbehauptungen, Get-rich-quick, Motivations-/Hustle-
+    Content, KI-generierten/faceless-Videos und oberflächlichen "Top 10"-Listen
+    ohne eigene Ergebnisse.
+
+modelle:
+  analyse: "claude-sonnet-5"
+  report: "claude-opus-4-8"
+  clustering: "claude-opus-4-8"
+  preise:
+    claude-opus-4-8:
+      input_pro_1m: 5.00
+      output_pro_1m: 25.00
+    claude-sonnet-5:
+      input_pro_1m: 3.00
+      output_pro_1m: 15.00
+    claude-haiku-4-5:
+      input_pro_1m: 1.00
+      output_pro_1m: 5.00
+
+# Kuratierte Business-Kanäle als günstige Grundlinie — BITTE ANPASSEN.
+# (Handles werden beim ersten Lauf automatisch aufgelöst; falsche werden
+# einfach übersprungen.)
+kanaele:
+  - {handle: "@starterstory", tier: A}
+  - {handle: "@MyFirstMillionPod", tier: A}
+  - {handle: "@AlexHormozi", tier: A}
+  - {handle: "@noahkagan", tier: A}
+  - {handle: "@GregIsenberg", tier: B}
+  - {handle: "@thisweekinstartups", tier: B}
+  - {handle: "@ycombinator", tier: B}
+
+# Themensuche ist die Hauptquelle (nach Datum sortiert). Breit rund um belegte
+# Business-/Geld-Methoden & Case-Studies; wenig Guru-Köder.
+keywords:
+  - "how I built my business revenue breakdown"
+  - "profitable business model explained real numbers"
+  - "small business acquisition case study"
+  - "service business scaled to per month real numbers"
+  - "e-commerce store revenue breakdown"
+  - "boring business high margin case study"
+  - "cash flow business real numbers"
+  - "solopreneur revenue breakdown"
+  - "local business profitable how it works"
+  - "digital product business income proof"
+  - "agency business real numbers behind"
+  - "buy a business search fund case study"
+  - "niche business opportunity real results"
+  - "how this small business makes money breakdown"
+  - "side business real revenue proof"
+  - "bootstrapped business build log numbers"
+
+filter:
+  max_alter_tage: 3
+  min_dauer_s: 240
+  max_dauer_s: 10800
+  sprachen: ["en"]
+  min_gesamtscore: 6.0
+  score_gewichte:
+    substanz: 0.4
+    neuheit: 0.3
+    umsetzbarkeit: 0.3
+  titel_blocklist:
+    - '(?i)get rich quick'
+    - '(?i)millionaire|millionär'
+    - '(?i)guaranteed income'
+    - '(?i)quit your (job|9-?5)'
+  kanal_blocklist: []
+
+triage:
+  aktiv: true
+  modell: "claude-haiku-4-5"
+  min_score: 4.0
+  batch_groesse: 12
+
+budget:
+  youtube_quota_limit: 10000
+  quota_warn_schwelle: 0.8
+  # Achtung: teilt sich das YouTube-Quota mit dem AI-Radar, wenn derselbe
+  # API-Key genutzt wird. Deshalb hier etwas niedriger. Für volle 10k eigenes
+  # Quota: separaten Google-Cloud-Projekt-Key anlegen und in dieser .env nutzen.
+  suchen_pro_tag: 20
+  max_llm_kosten_pro_tag_usd: 3.00
+  max_videos_pro_tag: 60
+
+transkripte:
+  min_pause_s: 2.0
+  max_pause_s: 4.0
+  max_retries: 4
+  sub_langs: ["en"]
+
+clustering:
+  wiederholung_tage: 14
+
+dashboard:
+  port: 8757                                  # anderer Port als der AI-Radar (8756)
+  service_label: "com.moneyradar.dashboard"   # eigener Dienst-Name
+  auto_run: true
+  auto_run_stunde: 8                          # versetzt zum AI-Radar (7), teilt sich das Quota
+
+retention:
+  transkripte_tage: 30
+
+zustellung:
+  email:
+    aktiv: false
+    betreff: "Money Radar — {datum}"
+  telegram:
+    aktiv: false
+
+pfade:
+  db: "data/radar.db"
+  reports: "reports"
+  logs: "logs"

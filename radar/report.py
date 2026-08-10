@@ -263,7 +263,9 @@ def run_report(
             client = AnthropicClient(secret("ANTHROPIC_API_KEY"), cfg.modelle)
             antwort = client.strukturiert(
                 modell=cfg.modelle.report,
-                system=REPORT_SYSTEM.format(profil=cfg.profil.beschreibung.strip()),
+                system=REPORT_SYSTEM.format(
+                    profil=cfg.profil.beschreibung.strip(), thema=cfg.profil.thema
+                ),
                 user=REPORT_USER.format(
                     datum=datum,
                     anzahl=len(analysen),

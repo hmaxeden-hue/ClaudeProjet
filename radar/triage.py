@@ -70,7 +70,7 @@ def run_triage(conn: sqlite3.Connection, cfg: Config) -> dict:
         try:
             antwort = client.strukturiert(
                 modell=cfg.triage.modell,
-                system=TRIAGE_SYSTEM,
+                system=TRIAGE_SYSTEM.format(thema=cfg.profil.thema),
                 user=TRIAGE_USER.format(anzahl=len(teil), videos=_format_videos(teil)),
                 tool_name="erfasse_triage",
                 tool_beschreibung="Erfasse je Video eine grobe Vielversprechend-Bewertung.",

@@ -127,6 +127,9 @@ class RetentionConfig(BaseModel):
 
 class DashboardConfig(BaseModel):
     port: int = 8756
+    # launchd-Dienstname — pro Radar-Instanz eindeutig, damit mehrere Radare
+    # nebeneinander laufen können, ohne sich den Dienst zu überschreiben.
+    service_label: str = "com.aibusinessradar.dashboard"
     # Automatischer Tageslauf: Der Dashboard-Dienst startet die Analyse einmal
     # pro Tag selbst, sobald die eingestellte Stunde erreicht ist. War der Mac
     # zu dem Zeitpunkt aus/schlief, wird der Lauf beim nächsten Wachsein nachgeholt.
@@ -142,6 +145,12 @@ class PfadeConfig(BaseModel):
 
 class ProfilConfig(BaseModel):
     beschreibung: str = ""
+    # Thema/Fokus des Radars — wird in die Prompts injiziert, damit derselbe Code
+    # verschiedene Radare bedienen kann (z. B. AI-Business vs. allgemeines Business).
+    thema: str = (
+        "mit AI konkret Geld verdienen / AI-Geschäftsmodelle / "
+        "AI-Automatisierung / AI-Tooling"
+    )
 
 
 class Config(BaseModel):

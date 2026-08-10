@@ -14,12 +14,15 @@
 #
 set -euo pipefail
 
-LABEL="com.aibusinessradar.dashboard"
-PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
-PORT="8756"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Dienst-Name und Port aus config.yaml lesen (Fallback auf Defaults), damit
+# mehrere Radar-Instanzen mit je eigenem Dienst/Port nebeneinander laufen können.
+PYBIN="${PROJECT_DIR}/.venv/bin/python"
+LABEL="$("${PYBIN}" -c 'from radar.config import lade_config; print(lade_config().dashboard.service_label)' 2>/dev/null || echo 'com.aibusinessradar.dashboard')"
+PORT="$("${PYBIN}" -c 'from radar.config import lade_config; print(lade_config().dashboard.port)' 2>/dev/null || echo '8756')"
+PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
 uninstall() {
   if [[ -f "${PLIST}" ]]; then
