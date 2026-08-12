@@ -114,6 +114,7 @@ clustering:
   wiederholung_tage: 14
 
 dashboard:
+  titel: "Business Radar"                      # Titel oben im Dashboard & Browser-Tab
   port: 8757                                  # anderer Port als der AI-Radar (8756)
   service_label: "com.moneyradar.dashboard"   # eigener Dienst-Name
   auto_run: true

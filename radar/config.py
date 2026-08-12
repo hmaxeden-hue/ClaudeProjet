@@ -127,6 +127,8 @@ class RetentionConfig(BaseModel):
 
 class DashboardConfig(BaseModel):
     port: int = 8756
+    # Titel oben im Dashboard (und im Browser-Tab) — pro Radar wählbar.
+    titel: str = "AI-Business Radar"
     # launchd-Dienstname — pro Radar-Instanz eindeutig, damit mehrere Radare
     # nebeneinander laufen können, ohne sich den Dienst zu überschreiben.
     service_label: str = "com.aibusinessradar.dashboard"

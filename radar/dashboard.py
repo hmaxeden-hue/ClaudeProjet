@@ -197,7 +197,9 @@ class _Handler(BaseHTTPRequestHandler):
         pfad = urlparse(self.path)
         route = pfad.path
         if route == "/":
-            self._send(200, SEITE.encode("utf-8"), "text/html; charset=utf-8")
+            titel = self.cfg.dashboard.titel
+            seite = SEITE.replace("__RADAR_TITEL__", titel)
+            self._send(200, seite.encode("utf-8"), "text/html; charset=utf-8")
         elif route == "/api/status":
             self._json(_snapshot())
         elif route == "/api/reports":
@@ -249,7 +251,7 @@ def run_dashboard(
         raise OSError(f"Port {port} blieb belegt — Dashboard konnte nicht starten.")
 
     url = f"http://{host}:{port}"
-    print("\n  AI-Business Radar — Dashboard läuft.")
+    print(f"\n  {cfg.dashboard.titel} — Dashboard läuft.")
     print(f"  Öffne im Browser:  {url}")
     if cfg.dashboard.auto_run:
         print(f"  Automatischer Tageslauf ab {cfg.dashboard.auto_run_stunde:02d}:00 Uhr.")
@@ -280,7 +282,7 @@ SEITE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI-Business Radar</title>
+<title>__RADAR_TITEL__</title>
 <style>
   :root {
     --bg:#f6f7f9; --panel:#fff; --ink:#1a1d24; --muted:#6b7280;
@@ -337,7 +339,7 @@ SEITE = """<!doctype html>
 <body>
 <header>
   <span style="font-size:22px">📡</span>
-  <h1>AI-Business Radar</h1>
+  <h1>__RADAR_TITEL__</h1>
   <span class="tag">dein privates Dashboard</span>
 </header>
 <div class="wrap">
