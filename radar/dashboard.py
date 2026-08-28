@@ -75,6 +75,11 @@ def _lauf(cfg: Config) -> None:
         _set(schritt="Vorsortierung …")
         _log("Günstige Vorsortierung (Titel/Beschreibung) …")
         s = run_triage(conn, cfg)
+        if s.get("api_abbruch"):
+            _log("⚠️ " + s["api_abbruch"])
+            _set(status="error", schritt="API-Guthaben aufgebraucht",
+                 fehler=s["api_abbruch"], beendet=datetime.now().isoformat())
+            return
         if s["geprueft"]:
             _log(f"{s['behalten']} vielversprechend, {s['aussortiert']} früh aussortiert (${s['kosten_usd']:.4f}).")
 
@@ -86,6 +91,11 @@ def _lauf(cfg: Config) -> None:
         _set(schritt="Analysiere Videos …")
         _log("KI-Substanzanalyse pro Video …")
         s = run_analyze(conn, cfg)
+        if s.get("api_abbruch"):
+            _log("⚠️ " + s["api_abbruch"])
+            _set(status="error", schritt="API-Guthaben aufgebraucht",
+                 fehler=s["api_abbruch"], beendet=datetime.now().isoformat())
+            return
         _log(f"{s['behalten']} behalten, {s['verworfen']} verworfen, ${s['kosten_usd']:.4f} Kosten.")
 
         _set(schritt="Erstelle Bericht …")

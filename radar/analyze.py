@@ -14,7 +14,7 @@ import json
 import sqlite3
 
 from . import quota
-from .anthropic_client import AnthropicClient
+from .anthropic_client import AnthropicClient, ist_guthaben_oder_zugang_fehler
 from .config import Config, secret
 from .db import heute_iso, jetzt_iso, log_fehler
 from .logging_setup import get_logger
@@ -100,6 +100,7 @@ def run_analyze(conn: sqlite3.Connection, cfg: Config, *, dry_run: bool = False)
         "fehler": 0,
         "kosten_usd": 0.0,
         "budget_gestoppt": False,
+        "api_abbruch": "",
     }
     log.info("Analyse: %d Kandidaten", len(kandidaten))
 
@@ -195,6 +196,16 @@ def run_analyze(conn: sqlite3.Connection, cfg: Config, *, dry_run: bool = False)
             _log_ergebnis(r["titel"], analyse, gesamt, behalten)
 
         except Exception as e:  # noqa: BLE001 — Einzelfehler darf Lauf nicht killen
+            if ist_guthaben_oder_zugang_fehler(e):
+                # Nicht dem Video anlasten: es bleibt 'transkribiert' und wird nach
+                # dem Aufladen beim nächsten Lauf automatisch erneut versucht.
+                stats["api_abbruch"] = (
+                    "Analyse abgebrochen: Anthropic-API-Guthaben aufgebraucht oder "
+                    "Key ungültig. Bitte Guthaben aufladen (console.anthropic.com)."
+                )
+                log_fehler(conn, "analyze", str(e))
+                log.error(stats["api_abbruch"])
+                break
             conn.execute(
                 "UPDATE videos SET status = 'fehler', fehler = ? WHERE video_id = ?",
                 (str(e)[:500], vid),

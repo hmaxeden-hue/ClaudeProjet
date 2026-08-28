@@ -13,7 +13,7 @@ from __future__ import annotations
 import sqlite3
 
 from . import quota
-from .anthropic_client import AnthropicClient
+from .anthropic_client import AnthropicClient, ist_guthaben_oder_zugang_fehler
 from .config import Config, secret
 from .db import jetzt_iso, log_fehler
 from .logging_setup import get_logger
@@ -37,7 +37,8 @@ def _format_videos(rows: list[sqlite3.Row]) -> str:
 
 
 def run_triage(conn: sqlite3.Connection, cfg: Config) -> dict:
-    stats = {"geprueft": 0, "behalten": 0, "aussortiert": 0, "kosten_usd": 0.0}
+    stats = {"geprueft": 0, "behalten": 0, "aussortiert": 0, "kosten_usd": 0.0,
+             "api_abbruch": ""}
     if not cfg.triage.aktiv:
         log.info("Triage deaktiviert — übersprungen.")
         return stats
@@ -96,6 +97,14 @@ def run_triage(conn: sqlite3.Connection, cfg: Config) -> dict:
                     stats["behalten"] += 1
             conn.commit()
         except Exception as e:  # noqa: BLE001 — Batch-Fehler darf Lauf nicht killen
+            if ist_guthaben_oder_zugang_fehler(e):
+                stats["api_abbruch"] = (
+                    "Vorsortierung abgebrochen: Anthropic-API-Guthaben aufgebraucht "
+                    "oder Key ungültig."
+                )
+                log_fehler(conn, "triage", str(e))
+                log.error(stats["api_abbruch"])
+                break
             log_fehler(conn, "triage", str(e))
             log.warning("Triage-Batch fehlgeschlagen (durchgelassen): %s", e)
             stats["behalten"] += len(teil)

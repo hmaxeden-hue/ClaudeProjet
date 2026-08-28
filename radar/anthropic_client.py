@@ -31,6 +31,22 @@ def _kosten(modelle: ModelleConfig, modell: str, in_tok: int, out_tok: int) -> f
     return in_tok / 1_000_000 * preis.input_pro_1m + out_tok / 1_000_000 * preis.output_pro_1m
 
 
+def ist_guthaben_oder_zugang_fehler(fehler) -> bool:
+    """Erkennt fatale, aber nach Behebung wiederholbare API-Fehler: aufgebrauchtes
+    Guthaben oder ungültiger/fehlender Key. Dann ist Weitermachen sinnlos — jeder
+    weitere Aufruf scheitert genauso."""
+    s = str(fehler).lower()
+    marker = (
+        "credit balance",
+        "plans & billing",
+        "billing",
+        "authentication_error",
+        "invalid x-api-key",
+        "permission_error",
+    )
+    return any(m in s for m in marker)
+
+
 class AnthropicClient:
     def __init__(self, api_key: str, modelle: ModelleConfig):
         self._client = Anthropic(api_key=api_key)
