@@ -155,8 +155,11 @@ def _monitor_kanaele(conn: sqlite3.Connection, yt: YouTubeClient, cfg: Config) -
 
 def _keyword_suche(conn: sqlite3.Connection, yt: YouTubeClient, cfg: Config) -> dict:
     stats = {"suchen": 0, "neu": 0, "vorgefiltert": 0, "abgeschaltet": False}
+    # Suchfenster = Freshness-Fenster (max_alter_tage). So deckt ein wöchentlicher
+    # Knopfdruck auch die ganze Woche ab, nicht nur die letzten 48 Stunden.
+    fenster_tage = max(1, cfg.filter.max_alter_tage)
     published_after = (
-        datetime.now(timezone.utc) - timedelta(hours=48)
+        datetime.now(timezone.utc) - timedelta(days=fenster_tage)
     ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     for query in cfg.keywords:
