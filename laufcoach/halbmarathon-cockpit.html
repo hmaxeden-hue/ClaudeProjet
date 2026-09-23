@@ -397,7 +397,7 @@ ul.clean li{margin:4px 0}
       <button data-act="go" data-view="plan"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Wochenplan</button>
       <button data-act="go" data-view="verlauf"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>Verlauf</button>
       <button data-act="go" data-view="wettkampf"><svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>Wettkampf</button>
-      <button data-act="go" data-view="import"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Whoop-Import</button>
+      <button data-act="go" data-view="import"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Import</button>
       <button data-act="go" data-view="einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Einstellungen</button>
     </nav>
     <div class="side-foot">
@@ -468,7 +468,11 @@ function paceRange(c, spread){ spread = spread == null ? 3 : spread; return fmtP
 
 function parseNum(v){
   if (v == null) return null;
-  const s = String(v).trim().replace(/'/g, '').replace(',', '.').replace(/[^\d.\-]/g, '');
+  let s = String(v).trim().replace(/['\s]/g, '');
+  const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+  if (lc >= 0 && ld >= 0) s = lc > ld ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (lc >= 0) s = s.split(',').length > 2 ? s.replace(/,/g, '') : s.replace(',', '.');
+  s = s.replace(/[^\d.\-]/g, '');
   if (s === '' || s === '-' || s === '.') return null;
   const n = parseFloat(s);
   return isFinite(n) ? n : null;
@@ -518,12 +522,12 @@ const DEF = {
   otherSports: '', injuries: '', cautious: false,
   recBase: null, hrvBase: null, rhrBase: null,
   raceName: 'Swiss City Marathon Luzern – Halbmarathon', raceDate: '2026-10-25',
-  goalTime: 6300, paceBasis: 'auto', planStart: null, hillKm: '6-11',
+  goalTime: 6300, paceBasis: 'auto', planStart: null, hillKm: '6-11', refRaceId: null,
   theme: 'auto', profileSaved: false
 };
 function defaultState(){
   return { v: 1, settings: Object.assign({}, DEF, { runDays: DEF.runDays.slice(), planStart: todayISO() }),
-           days: {}, workouts: [], checks: {}, swaps: {}, raceCheck: {} };
+           days: {}, workouts: [], checks: {}, swaps: {}, raceCheck: {}, races: [] };
 }
 function normalizeState(st){
   const d = defaultState();
@@ -535,6 +539,8 @@ function normalizeState(st){
   if (!fromISO(out.settings.raceDate)) out.settings.raceDate = DEF.raceDate;
   ['days', 'checks', 'swaps', 'raceCheck'].forEach(k => { if (!out[k] || typeof out[k] !== 'object' || Array.isArray(out[k])) out[k] = {}; });
   if (!Array.isArray(out.workouts)) out.workouts = [];
+  if (!Array.isArray(out.races)) out.races = [];
+  out.races = out.races.filter(r => r && fromISO(r.date) && isNum(r.dist) && isNum(r.time));
   out.workouts = out.workouts.filter(w => w && fromISO(w.date)).map(w => Object.assign({ id: uid() }, w));
   return out;
 }
@@ -564,6 +570,10 @@ function assess(){
   r.need10k = s.goalTime / Math.pow(HM / 10, 1.06);
   r.need5k = s.goalTime / Math.pow(HM / 5, 1.06);
   if (r.hasRef) {
+    const rr = S.races.find(x => x.id === s.refRaceId && Math.abs(x.time - s.refTime) < 1);
+    r.basis = rr ? (rr.name ? '«' + rr.name + '», ' : '') + distLabel(rr.dist) + ' vom ' + fmtDMY(fromISO(rr.date)) + ' in ' + fmtDur(rr.time)
+                 : distLabel(s.refDist) + ' in ' + fmtDur(s.refTime) + ' (aus den Einstellungen)';
+    if (rr) { const wk = Math.floor(dayDiff(fromISO(rr.date), t0) / 7); if (wk > 8) r.factors.push('Die Referenz ist ' + wk + ' Wochen alt – ohne aktuelles Rennen bleibt die Prognose unsicher.'); }
     r.pred = riegel(s.refTime, s.refDist, HM);
     let adj = 0;
     if (s.weeklyKm < 20) { adj += 0.04; r.factors.push('Wochenumfang unter 20 km – die Ausdauer limitiert (+4 %).'); }
@@ -571,7 +581,8 @@ function assess(){
     else if (s.weeklyKm < 40) { adj += 0.005; }
     if (s.longestRun < 10) { adj += 0.03; r.factors.push('Längster Lauf ' + s.longestRun + ' km – weit unter der Renndistanz (+3 %).'); }
     else if (s.longestRun < 14) { adj += 0.015; r.factors.push('Längster Lauf ' + s.longestRun + ' km – die Long Runs müssen noch wachsen (+1.5 %).'); }
-    if (s.refDist < 10) { adj += 0.01; r.factors.push('Hochrechnung von einer Kurzdistanz fällt meist zu optimistisch aus (+1 %).'); }
+    if (s.refDist < 9) { adj += 0.02; r.factors.push('Hochrechnung von ' + distLabel(s.refDist) + ' auf 21.1 km fällt meist zu optimistisch aus (+2 %).'); }
+    else if (s.refDist < 14) { adj += 0.01; r.factors.push('Hochrechnung von ' + distLabel(s.refDist) + ' auf 21.1 km: +1 % Sicherheitsmarge.'); }
     if (r.gain > 0.001) r.factors.push('Mögliche Formverbesserung bis zum Tapering: ca. ' + (r.gain * 100).toFixed(1) + ' %.');
     r.adj = adj;
     r.realistic = Math.ceil(r.pred * (1 + adj) * (1 - r.gain) / 30) * 30;
@@ -884,7 +895,7 @@ function buildPlan(A){
   const inc = s.cautious ? 0.05 : 0.07, longInc = s.cautious ? 1 : 1.5;
   const capF = base >= 60 ? 1.1 : base >= 45 ? 1.2 : 1.3;
   const capLong = base >= 45 ? 22 : 20;
-  const L0 = clamp(+s.longestRun || 10, 5, 24);
+  const L0 = clamp(+s.longestRun || 10, 5, Math.min(24, Math.max(12, base * 0.55)));
   const vol = [], lng = [], recW = [], bIdx = [];
   let lastF = 1, lastL = L0, bi = 0;
   for (let w = 0; w < nW; w++) {
@@ -1377,6 +1388,162 @@ function mapWhoop(rows, det){
   return out;
 }
 
+/* ---------- Strava (activities.csv aus dem Konto-Archiv) ---------- */
+const STD_DIST = [5, 10, 15, HM, 42.195];
+function snapDist(km){ for (const d of STD_DIST) if (km >= d * 0.985 && km <= d * 1.04) return d; return Math.round(km * 100) / 100; }
+function distLabel(d){ if (Math.abs(d - HM) < 0.01) return 'Halbmarathon'; if (Math.abs(d - 42.195) < 0.01) return 'Marathon'; return fmtKm(d) + ' km'; }
+const RACE_RX = /(rennen|race|wettkampf|wettlauf|marathon|parkrun|grand ?prix|\bgp\b|\bcup\b|meisterschaft|championship|trophy|stadtlauf|volkslauf|citylauf|city ?run|firmenlauf|silvesterlauf|\btest\b|time ?trial|zeitlauf|\b(5|10|15|21)\s?(k|km)\b|staffel|startnummer)/i;
+const DEFAULT_RUN_RX = /^(morning|lunch|afternoon|evening|night) run$|^(morgen|vormittags|mittags|nachmittags|abend|nacht)lauf$/i;
+const TRAIN_LAUF_RX = /^(morgen|vormittags|mittags|nachmittags|abend|nacht|dauer|tempo|regenerations|regeneration|steigerungs|erholungs|aus|ein|trab|lockerer|locker|langer|lang|intervall|fahrtspiel|sonntags|wochenend|feierabend|pausen|genuss|spazier)$/i;
+function looksLikeRace(name){
+  if (!name || DEFAULT_RUN_RX.test(name)) return false;
+  if (RACE_RX.test(name)) return true;
+  const m = /([a-zäöüé]+)lauf\b/i.exec(name);
+  return !!m && !TRAIN_LAUF_RX.test(m[1]);
+}
+function secVal(v){ const t = String(v == null ? '' : v).trim(); if (!t) return null; return t.includes(':') ? parseDur(t) : parseNum(t); }
+function firstNum(r, idxs, conv){ for (const i of idxs) { const v = (conv || parseNum)(r[i]); if (isNum(v) && v > 0) return v; } return null; }
+/* Strava exportiert «Activity Date» in UTC, meist als "Sep 14, 2026, 7:32:10 AM" */
+function parseStravaDate(str){
+  const t = String(str || '').trim(); if (!t) return null;
+  const M = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, mai: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11, dez: 11 };
+  const mon = w => { const k = w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3); return k in M ? M[k] : null; };
+  const hr = (h, ap) => { h = +h; if (ap) { const pm = /p/i.test(ap); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; } return h; };
+  let m = /^([A-Za-zÄÖÜäöü]+)\.?\s+(\d{1,2}),?\s+(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp]\.?[Mm]\.?)?/.exec(t);
+  if (m && mon(m[1]) != null) return new Date(Date.UTC(+m[3], mon(m[1]), +m[2], hr(m[4], m[7]), +m[5], +(m[6] || 0)));
+  m = /^(\d{1,2})\.?\s+([A-Za-zÄÖÜäöü]+)\.?\s+(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp]\.?[Mm]\.?)?/.exec(t);
+  if (m && mon(m[2]) != null) return new Date(Date.UTC(+m[3], mon(m[2]), +m[1], hr(m[4], m[7]), +m[5], +(m[6] || 0)));
+  m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(t);
+  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)));
+  m = /^(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(t);
+  if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0)));
+  const d = new Date(t); return isNaN(d) ? null : d;
+}
+function detectStrava(rows){
+  if (!rows.length) return null;
+  const h = rows[0].map(normH);
+  const one = n => h.indexOf(n), all = n => h.map((x, i) => x === n ? i : -1).filter(i => i >= 0);
+  const col = { id: one('activityid'), date: one('activitydate'), name: one('activityname'), type: one('activitytype'),
+    elapsed: all('elapsedtime'), moving: all('movingtime'), dist: all('distance'), elev: all('elevationgain'),
+    avgHr: all('averageheartrate'), maxHr: all('maxheartrate'), wtype: h.findIndex(x => /workouttype/.test(x)) };
+  if (col.date < 0 || col.type < 0 || !col.dist.length || (!col.elapsed.length && !col.moving.length)) return null;
+  return col;
+}
+function raceScore(dist, time, date, ref){
+  const wk = Math.max(0, dayDiff(fromISO(date), ref) / 7);
+  const spec = dist < 9 ? 0.03 : dist < 13 ? 0.01 : dist <= 22 ? -0.01 : dist > 30 ? 0.02 : 0;
+  return riegel(time, dist, HM) * (1 + 0.0025 * Math.max(0, wk - 4) + spec);
+}
+function stravaRec(an){
+  let best = -1, bs = 1e12;
+  an.races.forEach((r, i) => { if (r.isRace && r.score < bs && dayDiff(fromISO(r.date), an.anchor) <= 183) { bs = r.score; best = i; } });
+  return best;
+}
+function analyzeStrava(rows, col){
+  const body = rows.slice(1);
+  const isRunType = v => /run|lauf|jog/i.test(String(v || '')) && !/ride|velo|bike|rad/i.test(String(v || ''));
+  const runRows = body.filter(r => isRunType(r[col.type]));
+  /* Strava liefert «Distance» doppelt: einmal in km (bzw. Meilen), einmal in Metern */
+  let mIdx = -1, kIdx = -1;
+  col.dist.forEach(i => {
+    const v = runRows.map(r => parseNum(r[i])).filter(x => isNum(x) && x > 0).sort((a, b) => a - b);
+    const med = v.length ? v[Math.floor(v.length / 2)] : 0;
+    if (med > 300) { if (mIdx < 0) mIdx = i; } else if (med > 0 && kIdx < 0) kIdx = i;
+  });
+  const runs = [];
+  runRows.forEach((r, n) => {
+    const dt = parseStravaDate(r[col.date]); if (!dt) return;
+    let km = mIdx >= 0 ? (parseNum(r[mIdx]) || 0) / 1000 : 0;
+    if (!(km > 0) && kIdx >= 0) { const v = parseNum(r[kIdx]); km = isNum(v) ? (v > 300 ? v / 1000 : v) : 0; }
+    if (!(km >= 0.5)) return;
+    const el = firstNum(r, col.elapsed, secVal), mv = firstNum(r, col.moving, secVal);
+    const time = el || mv; if (!time) return;
+    const name = col.name >= 0 ? String(r[col.name] || '').trim() : '';
+    const wt = col.wtype >= 0 ? String(r[col.wtype] || '') : '';
+    runs.push({ id: col.id >= 0 && String(r[col.id] || '').trim() ? String(r[col.id]).trim() : isoOf(dt) + '-' + dt.getHours() + dt.getMinutes() + '-' + n,
+      date: isoOf(dt), time: pad2(dt.getHours()) + ':' + pad2(dt.getMinutes()), name, km: Math.round(km * 100) / 100,
+      elapsed: time, moving: mv || time, elev: firstNum(r, col.elev), avgHr: firstNum(r, col.avgHr), maxHr: firstNum(r, col.maxHr),
+      flagged: /race|wettkampf|^1$/i.test(wt.trim()) });
+  });
+  runs.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.time < b.time ? -1 : 1);
+  const t = today();
+  const lastRun = runs.length ? fromISO(runs[runs.length - 1].date) : null;
+  const stale = !!lastRun && dayDiff(lastRun, t) > 10;
+  const anchor = stale ? lastRun : t;
+  const an = { total: body.length, nRuns: runs.length, first: runs.length ? runs[0].date : null, last: runs.length ? runs[runs.length - 1].date : null, stale, anchor };
+  const inRange = (a, b) => runs.filter(x => x.date >= a && x.date <= b);
+  /* Wochenkilometer: die letzten 4 vollständigen Wochen */
+  const curMon = mondayOf(stale ? addDays(anchor, 7) : anchor);
+  an.weeks = [];
+  for (let i = 4; i >= 1; i--) { const mon = addDays(curMon, -7 * i); an.weeks.push({ mon, km: inRange(isoOf(mon), isoOf(addDays(mon, 6))).reduce((x, y) => x + y.km, 0) }); }
+  const wk = an.weeks.map(w => w.km).sort((a, b) => a - b);
+  an.weeklyMean = mean(wk);
+  an.weeklyAvg = (wk[1] + wk[2]) / 2;
+  /* Längster Lauf: nur Training – ein Rennen über 21 km ist kein Massstab für die Long-Run-Länge */
+  const l28 = inRange(isoOf(addDays(anchor, -27)), isoOf(anchor));
+  const l28t = l28.filter(x => !(x.flagged || looksLikeRace(x.name)));
+  an.longest = l28t.length ? l28t.reduce((a, b) => b.km > a.km ? b : a) : null;
+  const l28r = l28.filter(x => x.flagged || looksLikeRace(x.name));
+  an.longestRace = l28r.length ? l28r.reduce((a, b) => b.km > a.km ? b : a) : null;
+  /* Lauftage: häufigste Wochentage der letzten 8 vollständigen Wochen */
+  const cnt = [0, 0, 0, 0, 0, 0, 0], longCnt = [0, 0, 0, 0, 0, 0, 0];
+  let nDays = 0;
+  for (let i = 8; i >= 1; i--) {
+    const mon = addDays(curMon, -7 * i), wr = inRange(isoOf(mon), isoOf(addDays(mon, 6)));
+    const ds = Array.from(new Set(wr.map(x => x.date)));
+    ds.forEach(d => { cnt[wdIdx(fromISO(d))]++; nDays++; });
+    if (wr.length) { const lg = wr.reduce((a, b) => b.km > a.km ? b : a); longCnt[wdIdx(fromISO(lg.date))]++; }
+  }
+  if (nDays >= 4) {
+    const per = nDays / 8, n = clamp(Math.round(per), 2, 6);
+    const order = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => cnt[b] - cnt[a] || a - b);
+    let list = order.slice(0, n).filter(d => cnt[d] > 0);
+    const longDay = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => longCnt[b] - longCnt[a] || b - a)[0];
+    if (!list.includes(longDay)) list[list.length - 1] = longDay;
+    list = list.sort((a, b) => a - b);
+    an.days = { list, perWeek: per, longDay };
+  } else an.days = null;
+  /* HFmax: höchster plausibler Wert der letzten 12 Monate, einzelne Ausreisser ignoriert */
+  const y1 = isoOf(addDays(anchor, -365));
+  const hrs = runs.filter(x => x.date >= y1 && isNum(x.maxHr) && x.maxHr > 130 && x.maxHr < 225).sort((a, b) => b.maxHr - a.maxHr);
+  an.hr = hrs.length ? (hrs.length > 1 && hrs[0].maxHr - hrs[1].maxHr > 5 ? { value: Math.round(hrs[1].maxHr), date: hrs[1].date } : { value: Math.round(hrs[0].maxHr), date: hrs[0].date }) : null;
+  /* Rennkandidaten: Name klingt nach Rennen/Test oder schnellste Läufe je Standarddistanz */
+  const recent = runs.filter(x => x.date >= y1);
+  const cand = new Map();
+  recent.forEach(x => { const nm = x.flagged || looksLikeRace(x.name); if (nm && x.km >= 3) cand.set(x.id, { run: x, nameMatch: true }); });
+  /* zusätzlich die schnellsten Läufe je Standarddistanz – aber nur, wenn sie deutlich schneller als üblich waren */
+  const paces = recent.map(x => x.elapsed / x.km).sort((a, b) => a - b);
+  const medPace = paces.length ? paces[Math.floor(paces.length / 2)] : 0;
+  STD_DIST.forEach(d => {
+    recent.filter(x => snapDist(x.km) === d && x.elapsed / x.km <= medPace * 0.93).sort((a, b) => a.elapsed - b.elapsed).slice(0, 3)
+      .forEach(x => { if (!cand.has(x.id)) cand.set(x.id, { run: x, nameMatch: false }); });
+  });
+  an.races = Array.from(cand.values()).map(c => {
+    const x = c.run, dist = snapDist(x.km);
+    return { runId: x.id, date: x.date, name: x.name, km: x.km, dist, time: x.elapsed, moving: x.moving, elev: x.elev, avgHr: x.avgHr, maxHr: x.maxHr,
+             pred: riegel(x.elapsed, dist, HM), score: raceScore(dist, x.elapsed, x.date, anchor), hilly: isNum(x.elev) && x.elev / x.km > 12, isRace: c.nameMatch, nameMatch: c.nameMatch };
+  }).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 24);
+  an.runs = runs.filter(x => x.date >= isoOf(addDays(t, -7 * 26)));
+  an.opts = { weekly: an.weeklyAvg > 0, longest: !!an.longest, days: !!an.days && !S.settings.profileSaved, hr: false, ref: -1, range: 12 };
+  an.opts.ref = stravaRec(an);
+  return an;
+}
+function stravaRunCounts(an){
+  const out = { add: [], dup: 0 };
+  if (!an.opts.range) return out;
+  const from = isoOf(addDays(today(), -7 * an.opts.range));
+  const raceIds = new Set(an.races.filter(r => r.isRace).map(r => r.runId));
+  an.runs.filter(r => r.date >= from).forEach(r => {
+    if (S.workouts.some(w => w.stravaId === r.id)) { out.dup++; return; }
+    if (S.workouts.some(w => w.date === r.date && w.sport === 'run' && w.source !== 'strava' && isNum(w.dist) && Math.abs(w.dist - r.km) / r.km < 0.15)) { out.dup++; return; }
+    out.add.push(Object.assign({}, r, { race: raceIds.has(r.id) }));
+  });
+  return out;
+}
+function setRef(race){
+  S.settings.refDist = race.dist; S.settings.refTime = Math.round(race.time); S.settings.refRaceId = race.id;
+}
+
 /* ---------- Demo-Daten (klar markiert, jederzeit entfernbar) ---------- */
 function mulberry(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeDemo(){
@@ -1649,6 +1816,7 @@ function assessHtml(){
   }[A.level];
   let h = '<section class="card" style="margin-top:16px"><div class="grid g-2" style="gap:24px">';
   h += '<div><div class="eyebrow">Coach-Einschätzung</div><div class="row" style="margin:8px 0 10px"><span class="assess-lvl">' + esc(L[1]) + '</span>' + amp(L[0], 'Ziel ' + fmtDur(s.goalTime, true)) + '</div><p>' + esc(L[2]) + '</p>';
+  if (A.basis) h += '<p class="small ink2" style="margin-top:8px">Grundlage: <strong>' + esc(A.basis) + '</strong> <button class="btn ghost sm" data-act="goRaces">Rennen verwalten</button></p>';
   if (A.factors.length) h += '<ul class="need-list small ink2">' + A.factors.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul>';
   h += '<p class="small ink2" style="margin-top:10px">Zeit bis zum Rennen: <strong>' + Math.max(0, A.daysLeft) + ' Tage</strong>. ' +
     (A.daysLeft < 56 ? 'Das reicht nicht mehr für grossen Formaufbau (realistisch 1–2 %). Die Wochen bis zum Tapering dienen der Rennspezifik – Zielpace, Long Run, Frische – nicht dem Grundlagenaufbau.' : 'Genug Zeit für einen soliden Aufbau – Geduld bei der Umfangssteigerung.') + '</p></div>';
@@ -1671,7 +1839,7 @@ function viewHeute(){
     (wk ? '<span class="chip">Woche ' + (wk.idx + 1) + ' von ' + CUR.PLAN.weeks.length + '</span>' : '') +
     '<span class="chip">Planzeit ' + fmtDur(CUR.A.planTime, true) + ' · ' + fmtPace(CUR.A.planTime / HM) + ' /km</span></div></div>' +
     '<div class="count"><div class="big display">' + Math.max(0, dtr) + '</div><div class="lbl">' + (dtr === 1 ? 'Tag' : 'Tage') + ' bis Luzern<br><strong>' + fmtDS(race) + race.getFullYear() + '</strong> · Ziel ' + fmtDur(s.goalTime, true) + '</div></div></div>';
-  if (!s.profileSaved) h += '<div class="note accent" style="margin-bottom:18px"><strong>Deine Formdaten fehlen noch.</strong> Der Plan rechnet vorerst mit Beispielwerten (30 km pro Woche, längster Lauf 14 km, Lauftage Di/Do/Sa/So, keine Testzeit). <button class="btn sm primary" data-act="go" data-view="einstellungen" style="margin-left:6px">Grunddaten erfassen</button></div>';
+  if (!s.profileSaved) h += '<div class="note accent" style="margin-bottom:18px"><strong>Deine Formdaten fehlen noch.</strong> Der Plan rechnet vorerst mit Beispielwerten (30 km pro Woche, längster Lauf 14 km, Lauftage Di/Do/Sa/So, keine Testzeit). <button class="btn sm primary" data-act="go" data-view="einstellungen" style="margin-left:6px">Grunddaten erfassen</button> <button class="btn sm" data-act="go" data-view="import">Aus Strava übernehmen</button></div>';
   if (dtr < 0) {
     h += '<section class="card lift"><div class="eyebrow">Nach dem Rennen</div><h2 class="display today-title">Erholung hat jetzt Vorrang</h2><ul class="clean"><li>Tag 1–3: nicht laufen, spazieren, viel schlafen, normal und reichlich essen.</li><li>Tag 4–10: nur locker, 20–40 min, keine Intensität.</li><li>Ab Woche 3: Aufbau Richtung nächstes Ziel. Neues Rennen in den Einstellungen setzen – der Plan wird neu berechnet.</li></ul><div class="actions"><button class="btn primary" data-act="go" data-view="einstellungen">Neues Ziel setzen</button></div></section>';
     return h + '<div class="grid g-2" style="margin-top:16px">' + readinessCard(iso) + tipCard(iso) + '</div>';
@@ -2156,9 +2324,13 @@ function prepareImport(files){
     const rd = new FileReader();
     rd.onload = () => {
       try {
-        const rows = parseCSV(rd.result), det = detectWhoop(rows);
-        const recs = det.type === 'unknown' ? [] : mapWhoop(rows, det);
-        results.push({ name: file.name, type: det.type, recs: evaluateImport(det.type, recs) });
+        const rows = parseCSV(rd.result), sc = detectStrava(rows);
+        if (sc) results.push({ name: file.name, type: 'strava', recs: [], an: analyzeStrava(rows, sc) });
+        else {
+          const det = detectWhoop(rows);
+          const recs = det.type === 'unknown' ? [] : mapWhoop(rows, det);
+          results.push({ name: file.name, type: det.type, recs: evaluateImport(det.type, recs) });
+        }
       } catch (e) { results.push({ name: file.name, type: 'error', recs: [], err: String(e && e.message || e) }); }
       if (--pending === 0) { UI.imp = results; rerender(); }
     };
@@ -2197,18 +2369,21 @@ function evaluateImport(type, recs){
   return recs;
 }
 function viewImport(){
-  let h = '<div class="view-head"><div><h1>Whoop-Import</h1><p>Lies die CSV-Dateien aus Deinem Whoop-Export ein. Spalten werden automatisch erkannt, pro Datum gibt es keine Duplikate, und vor dem Import siehst Du eine Vorschau.</p></div></div>';
+  let h = '<div class="view-head"><div><h1>Import</h1><p>Lies Deine Exporte von Whoop (Erholung, Schlaf, Workouts) und Strava (Läufe und Rennen) ein. Die Dateien werden automatisch erkannt, Duplikate vermieden, und vor dem Übernehmen siehst Du eine Vorschau.</p></div></div>';
+  if (UI.stravaDone) h += '<div class="note good" style="margin-bottom:16px"><strong>Strava übernommen:</strong> ' + esc(UI.stravaDone) + ' <button class="btn sm" data-act="go" data-view="heute" style="margin-left:6px">Zur Einschätzung</button></div>';
   h += '<div class="drop" id="drop"><strong>CSV-Dateien hierher ziehen</strong><p>oder</p><div class="row" style="justify-content:center;margin-top:8px"><label class="btn primary" for="csvFile">Dateien auswählen</label><input type="file" id="csvFile" accept=".csv,text/csv" multiple hidden></div>' +
-    '<p class="small">physiological_cycles.csv (Recovery, HRV, Ruhepuls, Schlaf, Day Strain) · workouts.csv (Trainings) · sleeps.csv (optional)</p></div>';
-  h += '<div class="grid g-2" style="margin-top:16px"><section class="card"><h3>So kommst Du zum Export</h3><ol class="clean" style="padding-left:20px"><li>In der Whoop-App die Einstellungen öffnen und «Data Export» (Daten exportieren) wählen.</li><li>Whoop schickt einen Link per E-Mail. ZIP herunterladen und entpacken.</li><li>Die CSV-Dateien hier hineinziehen – mehrere gleichzeitig sind möglich.</li></ol><p class="small muted" style="margin-top:8px">Die Recovery wird dem Tag zugeordnet, an dem Du aufgewacht bist. Manuelle Angaben (Befinden, Beschwerden) bleiben beim Import erhalten.</p></section>' +
-    '<section class="card"><h3>Optionen</h3><div class="stack"><label class="check"><input type="checkbox" id="optRuns"' + (UI.onlyRuns ? ' checked' : '') + '><span>Bei Workouts nur Läufe vormerken (Velo, Kraft usw. abwählbar)</span></label><label class="check"><input type="checkbox" id="optOverwrite"' + (UI.overwriteManual ? ' checked' : '') + '><span>Manuell erfasste Recovery-, HRV-, Ruhepuls-, Schlaf- und Strain-Werte mit Whoop-Werten überschreiben</span></label></div></section></div>';
+    '<p class="small">Whoop: physiological_cycles.csv, workouts.csv, sleeps.csv · Strava: activities.csv</p></div>';
+  h += '<div class="grid g-3" style="margin-top:16px"><section class="card"><h3>Whoop-Export</h3><ol class="clean" style="padding-left:20px"><li>In der Whoop-App die Einstellungen öffnen und «Data Export» wählen.</li><li>Whoop schickt einen Link per E-Mail. ZIP herunterladen und entpacken.</li><li>Die CSV-Dateien hier hineinziehen – mehrere gleichzeitig sind möglich.</li></ol><p class="small muted" style="margin-top:8px">Die Recovery wird dem Tag zugeordnet, an dem Du aufgewacht bist. Manuelle Angaben (Befinden, Beschwerden) bleiben erhalten.</p></section>' +
+    '<section class="card"><h3>Strava-Export</h3><ol class="clean" style="padding-left:20px"><li>Auf strava.com im Browser anmelden (nicht in der App).</li><li>In den Einstellungen unter «Mein Konto» den Download Deines Accounts starten und das Archiv anfordern.</li><li>Strava schickt einen Link per E-Mail – das kann eine Weile dauern. ZIP entpacken und <strong>activities.csv</strong> hier hineinziehen.</li></ol><p class="small muted" style="margin-top:8px">Das Cockpit berechnet daraus Wochenkilometer, längsten Lauf, Lauftage, HFmax und Deine Rennzeiten. Nichts wird übernommen, bevor Du es bestätigst.</p></section>' +
+    '<section class="card"><h3>Whoop-Optionen</h3><div class="stack"><label class="check"><input type="checkbox" id="optRuns"' + (UI.onlyRuns ? ' checked' : '') + '><span>Bei Workouts nur Läufe vormerken (Velo, Kraft usw. abwählbar)</span></label><label class="check"><input type="checkbox" id="optOverwrite"' + (UI.overwriteManual ? ' checked' : '') + '><span>Manuell erfasste Recovery-, HRV-, Ruhepuls-, Schlaf- und Strain-Werte mit Whoop-Werten überschreiben</span></label></div></section></div>';
   if (UI.imp) {
     const tLabel = { cycles: 'Physiologische Zyklen', workouts: 'Workouts', sleeps: 'Schlaf', unknown: 'Nicht erkannt', error: 'Fehler' };
     h += '<h2 class="section-title">Vorschau</h2>';
     UI.imp.forEach((f, fi) => {
+      if (f.type === 'strava') { h += stravaCardHtml(f, fi); return; }
       const inc = f.recs.filter(r => r.inc).length;
       h += '<section class="card" style="margin-bottom:14px"><div class="row between"><div><strong>' + esc(f.name) + '</strong> <span class="chip">' + tLabel[f.type] + '</span></div><span class="small ink2">' + f.recs.length + ' Zeilen · ' + inc + ' zum Import vorgemerkt</span></div>';
-      if (f.type === 'unknown') h += '<p class="note warn" style="margin-top:10px">Keine bekannten Whoop-Spalten gefunden. Erwartet werden z. B. «Recovery score %», «Heart rate variability (ms)», «Resting heart rate (bpm)» oder «Activity name».</p>';
+      if (f.type === 'unknown') h += '<p class="note warn" style="margin-top:10px">Keine bekannten Spalten gefunden. Erwartet werden Whoop-Spalten wie «Recovery score %» oder «Activity name» bzw. die Strava-Datei activities.csv mit «Activity Date», «Activity Type» und «Distance».</p>';
       else if (f.type === 'error') h += '<p class="note bad" style="margin-top:10px">' + esc(f.err) + '</p>';
       else if (f.recs.length) {
         h += '<div class="row" style="margin:10px 0"><button class="btn sm" data-act="impAll" data-f="' + fi + '" data-v="1">Alle neuen/aktualisierten wählen</button><button class="btn ghost sm" data-act="impAll" data-f="' + fi + '" data-v="0">Keine</button></div>';
@@ -2228,9 +2403,71 @@ function viewImport(){
       h += '</section>';
     });
     const total = UI.imp.reduce((a, f) => a + f.recs.filter(r => r.inc).length, 0);
-    h += '<div class="actions"><button class="btn primary" data-act="impGo"' + (total ? '' : ' disabled') + '>' + total + ' Einträge importieren</button><button class="btn ghost" data-act="impCancel">Verwerfen</button></div>';
+    if (UI.imp.some(f => f.type !== 'strava')) h += '<div class="actions"><button class="btn primary" data-act="impGo"' + (total ? '' : ' disabled') + '>' + total + ' Einträge importieren</button><button class="btn ghost" data-act="impCancel">Verwerfen</button></div>';
   }
   return h;
+}
+function stravaCardHtml(f, fi){
+  const an = f.an, o = an.opts, s = S.settings, p = 'sv' + fi + '-';
+  const chk = (key, on, label) => '<label class="check"><input type="checkbox" id="' + p + key + '" data-sopt="' + fi + ':' + key + '"' + (on ? ' checked' : '') + '><span>' + label + '</span></label>';
+  let h = '<section class="card lift" style="margin-bottom:14px"><div class="row between"><div><strong>' + esc(f.name) + '</strong> <span class="chip accent">Strava</span></div><span class="small ink2">' +
+    an.total + ' Aktivitäten · ' + an.nRuns + ' Läufe' + (an.first ? ' · ' + fmtDMY(fromISO(an.first)) + ' bis ' + fmtDMY(fromISO(an.last)) : '') + '</span></div>';
+  if (!an.nRuns) return h + '<p class="note warn" style="margin-top:12px">In dieser Datei sind keine Läufe enthalten.</p><div class="actions"><button class="btn ghost" data-act="stravaDrop" data-f="' + fi + '">Verwerfen</button></div></section>';
+  if (an.stale) h += '<p class="note warn" style="margin-top:12px">Der Export endet am ' + fmtDMY(fromISO(an.last)) + '. Die Werte beschreiben Deine Form von damals – für aktuelle Werte ein neues Archiv anfordern.</p>';
+  h += '<h3 style="margin-top:18px">Aktuelle Form</h3><div class="stack" style="gap:10px">';
+  h += chk('weekly', o.weekly, 'Wochenkilometer: typisch <strong>' + Math.round(an.weeklyAvg) + ' km</strong> <span class="ink2">(Median der letzten 4 Wochen: ' + an.weeks.map(w => fmtKm(w.km)).join(' · ') + ' km; Schnitt ' + fmtKm(an.weeklyMean) + ' km) – bisher ' + fmtKm(s.weeklyKm) + ' km</span>');
+  if (an.longest) h += chk('longest', o.longest, 'Längster Trainingslauf der letzten 4 Wochen: <strong>' + fmtKm(an.longest.km) + ' km</strong> <span class="ink2">am ' + fmtDS(fromISO(an.longest.date)) +
+    (an.longestRace && an.longestRace.km > an.longest.km ? ' (Rennen nicht mitgezählt: ' + esc(an.longestRace.name) + ', ' + fmtKm(an.longestRace.km) + ' km)' : '') + ' – bisher ' + fmtKm(s.longestRun) + ' km</span>');
+  if (an.days) h += chk('days', o.days, 'Lauftage: <strong>' + an.days.list.map(d => WD[d]).join(', ') + '</strong>, Long Run am ' + WDL[an.days.longDay] + ' <span class="ink2">(Ø ' + an.days.perWeek.toFixed(1) + ' Lauftage pro Woche in den letzten 8 Wochen) – bisher ' + s.runDays.slice().sort((a, b) => a - b).map(d => WD[d]).join(', ') + '</span>');
+  if (an.hr) h += chk('hr', o.hr, 'HFmax: <strong>' + an.hr.value + ' bpm</strong> <span class="ink2">(höchster Wert der letzten 12 Monate, ' + fmtDS(fromISO(an.hr.date)) + ') – nur übernehmen, wenn Du dabei wirklich ausbelastet warst; Pulsmessung am Handgelenk kann Ausreisser enthalten.</span>');
+  h += '</div>';
+  h += '<h3 style="margin-top:20px">Rennen & Tests</h3><p class="small ink2" style="margin:-4px 0 10px">Häkchen = echtes Rennen oder Test, bei dem Du alles gegeben hast. Vorausgewählt sind Läufe, deren Name nach Rennen klingt; zusätzlich siehst Du Deine schnellsten Läufe je Standarddistanz. Die Referenz bestimmt Prognose und Paces.</p>';
+  if (!an.races.length) h += '<p class="note">Keine Rennen gefunden. Du kannst Rennen auch in den Einstellungen unter «Rennresultate» von Hand erfassen.</p>';
+  else {
+    const rec = stravaRec(an);
+    h += '<div class="table-wrap" style="max-height:420px;overflow:auto"><table><thead><tr><th>Rennen</th><th>Referenz</th><th>Name / Datum</th><th class="num">Distanz</th><th class="num">Zeit</th><th class="num">Pace</th><th class="num">Höhenmeter</th><th class="num">Ø-Puls</th><th class="num">HM-Prognose</th></tr></thead><tbody>';
+    an.races.forEach((r, ri) => {
+      h += '<tr' + (o.ref === ri ? ' class="hl"' : '') + '><td><input type="checkbox" id="' + p + 'race' + ri + '" data-srace="' + fi + ':' + ri + '"' + (r.isRace ? ' checked' : '') + ' aria-label="Ist ein Rennen oder Test"></td>' +
+        '<td><input type="radio" name="sref' + fi + '" id="' + p + 'ref' + ri + '" data-sref="' + fi + '" value="' + ri + '"' + (o.ref === ri ? ' checked' : '') + ' aria-label="Als Referenz verwenden"></td>' +
+        '<td>' + esc(r.name || 'Lauf') + (ri === rec ? ' <span class="chip accent">empfohlen</span>' : '') + '<div class="tiny muted">' + fmtDMY(fromISO(r.date)) + '</div></td>' +
+        '<td class="num nowrap">' + distLabel(r.dist) + (fmtKm(r.dist) !== fmtKm(r.km) ? '<div class="tiny muted">GPS ' + fmtKm(r.km) + ' km</div>' : '') + '</td>' +
+        '<td class="num">' + fmtDur(r.time) + '</td><td class="num">' + fmtPace(r.time / r.dist) + '</td>' +
+        '<td class="num">' + (isNum(r.elev) ? Math.round(r.elev) + (r.hilly ? ' ▲' : '') : '–') + '</td><td class="num">' + (isNum(r.avgHr) ? Math.round(r.avgHr) : '–') + '</td>' +
+        '<td class="num"><strong>' + fmtDur(r.pred, true) + '</strong></td></tr>';
+    });
+    h += '</tbody></table></div><p class="small muted" style="margin-top:8px">HM-Prognose nach Riegel, ohne Anpassung an Umfang und Long Run – die Coach-Einschätzung rechnet diese noch ein. ▲ = hügelig (über 12 Höhenmeter pro km): Die Zeit unterschätzt eher, was Du auf der flachen Luzerner Strecke kannst. «Empfohlen» ist das stärkste Rennen der letzten 6 Monate, ältere Resultate zählen etwas weniger.</p>';
+  }
+  const rc = stravaRunCounts(an);
+  h += '<h3 style="margin-top:20px">Läufe ins Tagebuch</h3><div class="row"><div class="field" style="width:220px"><label for="' + p + 'range">Zeitraum</label><select id="' + p + 'range" data-srange="' + fi + '">' +
+    [[0, 'Keine Läufe übernehmen'], [4, 'Letzte 4 Wochen'], [8, 'Letzte 8 Wochen'], [12, 'Letzte 12 Wochen'], [26, 'Letzte 26 Wochen']].map(x => '<option value="' + x[0] + '"' + (o.range === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') +
+    '</select></div><p class="small ink2" style="align-self:flex-end;padding-bottom:8px">' + (o.range ? rc.add.length + ' neue Läufe' + (rc.dup ? ', ' + rc.dup + ' bereits vorhanden oder doppelt (Whoop/manuell) – werden übersprungen' : '') : 'Es werden keine Läufe ins Tagebuch übernommen.') + '</p></div>';
+  h += '<div class="actions"><button class="btn primary" data-act="stravaApply" data-f="' + fi + '">Strava-Werte übernehmen</button><button class="btn ghost" data-act="stravaDrop" data-f="' + fi + '">Verwerfen</button></div></section>';
+  return h;
+}
+function applyStrava(fi){
+  const an = UI.imp[fi].an, o = an.opts, s = S.settings, msg = [];
+  if (o.weekly && an.weeklyAvg > 0) { s.weeklyKm = Math.max(5, Math.round(an.weeklyAvg)); msg.push(s.weeklyKm + ' km pro Woche'); }
+  if (o.longest && an.longest) { s.longestRun = Math.max(3, r05(an.longest.km)); msg.push('längster Lauf ' + fmtKm(s.longestRun) + ' km'); }
+  if (o.days && an.days) { s.runDays = an.days.list.slice(); s.longDay = an.days.longDay; msg.push('Lauftage ' + an.days.list.map(d => WD[d]).join('/')); }
+  if (o.hr && an.hr) { s.hrMax = an.hr.value; msg.push('HFmax ' + an.hr.value + ' bpm'); }
+  const findRace = r => S.races.find(x => x.id === 'strava:' + r.runId) || S.races.find(x => x.date === r.date && Math.abs(x.dist - r.dist) < 0.5);
+  const addRace = r => { const x = { id: 'strava:' + r.runId, date: r.date, name: r.name, dist: r.dist, gps: r.km, time: Math.round(r.time), elev: r.elev, avgHr: r.avgHr, maxHr: r.maxHr, source: 'strava' }; S.races.push(x); return x; };
+  let nr = 0;
+  an.races.forEach(r => { if (r.isRace && !findRace(r)) { addRace(r); nr++; } });
+  if (nr) msg.push(nr + (nr === 1 ? ' Rennen' : ' Rennen') + ' gespeichert');
+  if (o.ref >= 0 && an.races[o.ref]) {
+    const r = an.races[o.ref], rr = findRace(r) || addRace(r);
+    setRef(rr); msg.push('Referenz: ' + distLabel(rr.dist) + ' in ' + fmtDur(rr.time));
+  }
+  const rc = stravaRunCounts(an);
+  rc.add.forEach(r => S.workouts.push({ id: uid(), date: r.date, sport: 'run', dist: r.km, dur: Math.round(r.race ? r.elapsed : r.moving), avgHr: r.avgHr,
+    note: (r.race ? 'Rennen: ' : '') + (r.name || 'Lauf') + ' (Strava)', source: 'strava', stravaId: r.id, quality: r.race }));
+  if (rc.add.length) msg.push(rc.add.length + ' Läufe im Tagebuch');
+  if (o.weekly || o.longest || o.ref >= 0) s.profileSaved = true;
+  UI.imp.splice(fi, 1); if (!UI.imp.length) UI.imp = null;
+  UI.stravaDone = msg.length ? msg.join(' · ') : 'Nichts ausgewählt – keine Änderungen.';
+  saveState(); recompute(); rerender();
+  toast('Strava-Werte übernommen – Plan und Paces neu berechnet');
 }
 function afterImport(){
   const drop = $('#drop'), inp = $('#csvFile');
@@ -2283,9 +2520,9 @@ function viewEinstellungen(){
   h += '<section class="card"><fieldset><legend>Aktuelle Form</legend><div class="form-grid">' +
     '<div class="field"><label for="s-wkm">Laufkilometer pro Woche</label><input type="number" id="s-wkm" name="weeklyKm" min="5" max="200" value="' + val(s.weeklyKm) + '"><span class="hint">Schnitt der letzten 4 Wochen</span></div>' +
     '<div class="field"><label for="s-long">Längster Lauf (4 Wochen), km</label><input type="number" id="s-long" name="longestRun" min="3" max="45" step="0.5" value="' + val(s.longestRun) + '"></div>' +
-    '<div class="field"><label for="s-rdist">Referenzdistanz</label><select id="s-rdist" name="refDist">' + [[5, '5 km'], [10, '10 km'], [HM, 'Halbmarathon'], [15, '15 km']].map(o => '<option value="' + o[0] + '"' + (Math.abs((s.refDist || 10) - o[0]) < 0.01 ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></div>' +
+    '<div class="field"><label for="s-rdist">Referenzdistanz</label><select id="s-rdist" name="refDist">' + refDistOptions(s.refDist) + '</select></div>' +
     '<div class="field"><label for="s-rtime">Letzte Wettkampf-/Testzeit</label><input type="text" id="s-rtime" name="refTime" placeholder="48:30" value="' + (isNum(s.refTime) ? fmtDur(s.refTime) : '') + '"><span class="hint">mm:ss oder h:mm:ss, leer = unbekannt</span></div>' +
-    '</div></fieldset></section>';
+    '</div><div class="row" style="margin-top:12px"><span class="small ink2">Mehrere Rennen? Erfasse sie unter «Rennresultate» oder übernimm alles aus Deinem Strava-Export.</span><button class="btn sm" type="button" data-act="goRaces">Rennresultate</button><button class="btn sm" type="button" data-act="go" data-view="import">Strava importieren</button></div></fieldset></section>';
   h += '<section class="card"><fieldset><legend>Training</legend><div class="field"><span class="lbl">Mögliche Lauftage</span><div class="daypick">' +
     WD.map((d, i) => '<label><input type="checkbox" name="runDays" value="' + i + '"' + (s.runDays.includes(i) ? ' checked' : '') + '><span>' + d + '</span></label>').join('') + '</div><span class="hint">Mindestens 3 Tage empfohlen; bei 4+ Tagen gibt es zwei Qualitätseinheiten pro Woche.</span></div>' +
     '<div class="form-grid" style="margin-top:14px"><div class="field"><label for="s-lday">Long-Run-Tag</label><select id="s-lday" name="longDay">' + WDL.map((d, i) => '<option value="' + i + '"' + (+s.longDay === i ? ' selected' : '') + '>' + d + '</option>').join('') + '</select></div>' +
@@ -2310,6 +2547,7 @@ function viewEinstellungen(){
     [['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(o => '<input type="radio" name="theme" id="th-' + o[0] + '" value="' + o[0] + '"' + (s.theme === o[0] ? ' checked' : '') + '><label for="th-' + o[0] + '">' + o[1] + '</label>').join('') + '</div></fieldset></section>';
   h += '<div class="save-bar"><button class="btn primary" type="submit">Speichern & Plan neu berechnen</button><span class="small muted">Plan, Paces und Einschätzung passen sich sofort an.</span></div>';
   h += '</form>';
+  h += racesCardHtml();
   h += '<section class="card" style="margin-top:22px"><h3>Datensicherung (JSON)</h3><p class="ink2 small">Die Daten liegen nur in diesem Browser. Sichere sie regelmässig – zum Beispiel einmal pro Woche. Mit dem Backup ziehst Du die Daten auch auf ein anderes Gerät oder in einen anderen Browser um. Startet kein Download (z. B. in einer Web-Vorschau), nutze «In Zwischenablage kopieren» oder «Backup als Text anzeigen».</p>' +
     '<div class="actions">' + (FRAMED ? '' : '<button class="btn primary" data-act="exportDl">Backup herunterladen</button>') + '<button class="btn" data-act="exportCopy">In Zwischenablage kopieren</button><button class="btn ghost" data-act="exportShow">' + (UI.showBackup ? 'Backup ausblenden' : 'Backup als Text anzeigen') + '</button></div>' +
     (UI.showBackup ? '<div class="field" style="margin-top:12px"><label for="bkOut">Backup-Inhalt</label><textarea id="bkOut" readonly style="min-height:160px;font-family:ui-monospace,monospace;font-size:12px">' + esc(JSON.stringify(S)) + '</textarea></div>' : '') +
@@ -2317,6 +2555,56 @@ function viewEinstellungen(){
     '<div class="field"><label for="bkIn">…oder Backup-Text einfügen</label><textarea id="bkIn" placeholder="{&quot;v&quot;:1, …}"></textarea><div><button class="btn sm" data-act="importText" style="margin-top:6px">Text einlesen</button></div></div></div>' +
     '<div class="actions" style="border-top:1px solid var(--line);padding-top:16px"><button class="btn danger" data-act="resetAll">Alle Daten löschen</button></div></section>';
   return h;
+}
+function refDistOptions(cur){
+  const opts = [[5, '5 km'], [10, '10 km'], [15, '15 km'], [HM, 'Halbmarathon'], [42.195, 'Marathon']];
+  if (isNum(cur) && !opts.some(o => Math.abs(o[0] - cur) < 0.01)) opts.push([cur, fmtKm(cur) + ' km']);
+  return opts.map(o => '<option value="' + o[0] + '"' + (Math.abs((cur || 10) - o[0]) < 0.01 ? ' selected' : '') + '>' + o[1] + '</option>').join('');
+}
+function racesCardHtml(){
+  const t = today(), s = S.settings;
+  const races = S.races.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+  let best = null, bs = 1e12;
+  races.forEach(r => { if (dayDiff(fromISO(r.date), t) > 183) return; const sc = raceScore(r.dist, r.time, r.date, t); if (sc < bs) { bs = sc; best = r.id; } });
+  let h = '<section class="card" id="racesCard" style="margin-top:22px"><h3>Rennresultate</h3><p class="small ink2" style="margin:-4px 0 12px">Die gewählte Referenz bestimmt Prognose, Coach-Einschätzung und – bei «Automatisch» – die Trainingspaces. Rennen der letzten 3 Monate sind am aussagekräftigsten.</p>';
+  if (races.length) {
+    h += '<div class="table-wrap"><table><thead><tr><th>Referenz</th><th>Datum</th><th>Rennen</th><th class="num">Distanz</th><th class="num">Zeit</th><th class="num">Pace</th><th class="num">HM-Prognose</th><th>Quelle</th><th></th></tr></thead><tbody>';
+    races.forEach(r => {
+      const on = s.refRaceId === r.id;
+      h += '<tr' + (on ? ' class="hl"' : '') + '><td><input type="radio" name="refRace" id="rr-' + esc(r.id) + '" value="' + esc(r.id) + '"' + (on ? ' checked' : '') + ' aria-label="Als Referenz verwenden"></td>' +
+        '<td class="nowrap">' + fmtDMY(fromISO(r.date)) + '</td><td>' + esc(r.name || '–') + (r.id === best ? ' <span class="chip accent">empfohlen</span>' : '') + '</td>' +
+        '<td class="num nowrap">' + distLabel(r.dist) + '</td><td class="num">' + fmtDur(r.time) + '</td><td class="num">' + fmtPace(r.time / r.dist) + '</td>' +
+        '<td class="num"><strong>' + fmtDur(riegel(r.time, r.dist, HM), true) + '</strong></td><td>' + (r.source === 'strava' ? 'Strava' : 'manuell') + '</td>' +
+        '<td><button class="btn ghost sm" type="button" data-act="delRace" data-id="' + esc(r.id) + '">Löschen</button></td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if (!s.refRaceId && isNum(s.refTime)) h += '<p class="small muted" style="margin-top:8px">Aktuell gilt die Referenzzeit aus «Aktuelle Form» (' + distLabel(s.refDist) + ' in ' + fmtDur(s.refTime) + ').</p>';
+  } else h += '<p class="note">Noch keine Rennen erfasst. Füge sie hier hinzu oder importiere Deinen Strava-Export.</p>';
+  h += '<form id="raceForm" autocomplete="off" novalidate style="margin-top:16px"><div class="form-grid">' +
+    '<div class="field"><label for="r-date">Datum</label><input type="date" id="r-date" name="date" max="' + isoOf(t) + '"></div>' +
+    '<div class="field"><label for="r-name">Rennen</label><input type="text" id="r-name" name="name" placeholder="z. B. Greifenseelauf"></div>' +
+    '<div class="field"><label for="r-dist">Distanz</label><select id="r-dist" name="dist">' + refDistOptions(10) + '<option value="other">Andere…</option></select></div>' +
+    '<div class="field"><label for="r-km">Andere Distanz (km)</label><input type="number" id="r-km" name="km" min="1" max="100" step="0.01" inputmode="decimal"></div>' +
+    '<div class="field"><label for="r-time">Zeit</label><input type="text" id="r-time" name="time" placeholder="48:30"></div>' +
+    '</div><div class="actions"><button class="btn" type="submit">Rennen hinzufügen</button></div></form></section>';
+  return h;
+}
+function saveRaceForm(f){
+  const fd = new FormData(f);
+  const date = String(fd.get('date') || ''), name = String(fd.get('name') || '').trim().slice(0, 60);
+  const dv = String(fd.get('dist') || '10');
+  const dist = dv === 'other' ? parseNum(fd.get('km')) : parseFloat(dv);
+  const time = parseDur(fd.get('time'));
+  if (!fromISO(date)) { toast('Bitte das Datum des Rennens angeben.'); return; }
+  if (!isNum(dist) || dist < 1) { toast('Bitte eine gültige Distanz wählen.'); return; }
+  if (!isNum(time) || time < dist * 150 || time > dist * 600) { toast('Die Zeit passt nicht zur Distanz (Format mm:ss oder h:mm:ss).'); return; }
+  const r = { id: uid(), date, name, dist, time: Math.round(time), source: 'manuell' };
+  S.races.push(r);
+  const first = !S.settings.refRaceId;
+  if (first) setRef(r);
+  S.settings.profileSaved = S.settings.profileSaved || first;
+  saveState(); recompute(); rerender();
+  toast(first ? 'Rennen hinzugefügt und als Referenz gesetzt' : 'Rennen hinzugefügt – als Referenz wählen, falls es Deine Form am besten zeigt');
 }
 function readSettingsForm(f){
   const fd = new FormData(f), s = Object.assign({}, S.settings), errs = [];
@@ -2329,6 +2617,7 @@ function readSettingsForm(f){
   const rt = String(fd.get('refTime') || '').trim();
   if (rt) { const sec = parseDur(rt); if (!isNum(sec) || sec < s.refDist * 150 || sec > s.refDist * 600) errs.push('Die Referenzzeit passt nicht zur Distanz (Format mm:ss oder h:mm:ss).'); else s.refTime = sec; }
   else s.refTime = null;
+  if (s.refRaceId) { const rr = S.races.find(x => x.id === s.refRaceId); if (!rr || !isNum(s.refTime) || Math.abs(rr.time - s.refTime) > 1 || Math.abs(rr.dist - s.refDist) > 0.01) s.refRaceId = null; }
   const rd = fd.getAll('runDays').map(Number); if (rd.length < 2) errs.push('Bitte mindestens 2 Lauftage wählen (empfohlen: 3–5).'); else s.runDays = rd;
   s.longDay = +fd.get('longDay'); s.strengthPerWeek = +fd.get('strengthPerWeek');
   s.otherSports = String(fd.get('otherSports') || '').trim(); s.injuries = String(fd.get('injuries') || '').trim();
@@ -2434,6 +2723,15 @@ const ACT = {
   resetCheck: el => { const id = el.dataset.list; Object.keys(S.raceCheck).forEach(k => { if (k.startsWith(id + ':')) delete S.raceCheck[k]; }); saveState(); rerender(); },
   impAll: el => { const f = UI.imp[+el.dataset.f], on = el.dataset.v === '1'; f.recs.forEach(r => { r.inc = on && (r.cls === 'new' || r.cls === 'upd') && (f.type !== 'workouts' || r.sport === 'run' || !UI.onlyRuns); }); rerender(); },
   impGo: () => applyImport(),
+  stravaApply: el => applyStrava(+el.dataset.f),
+  stravaDrop: el => { UI.imp.splice(+el.dataset.f, 1); if (!UI.imp.length) UI.imp = null; rerender(); },
+  goRaces: () => { go('einstellungen'); setTimeout(() => { const c = $('#racesCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30); },
+  delRace: el => confirmBox('Rennen löschen?', 'Das Rennresultat wird aus der Liste entfernt.', 'Löschen', true).then(ok => {
+    if (!ok) return;
+    S.races = S.races.filter(r => r.id !== el.dataset.id);
+    if (S.settings.refRaceId === el.dataset.id) S.settings.refRaceId = null;
+    saveState(); recompute(); rerender(); toast('Rennen gelöscht');
+  }),
   impCancel: () => { UI.imp = null; rerender(); },
   restartPlan: () => confirmBox('Plan ab heute neu starten?', 'Der Plan wird ab ' + fmtDL(today()) + ' neu aufgebaut. Tagebuch und Abhak-Status bleiben erhalten, Verschiebungen werden zurückgesetzt.', 'Neu starten', false).then(ok => {
     if (!ok) return; S.settings.planStart = todayISO(); S.swaps = {}; saveState(); recompute(); rerender(); toast('Plan ab heute neu aufgebaut');
@@ -2466,6 +2764,21 @@ document.addEventListener('change', e => {
   if (t.dataset && t.dataset.imp) { const [fi, ri] = t.dataset.imp.split(':').map(Number); UI.imp[fi].recs[ri].inc = t.checked; rerender(); return; }
   if (t.id === 'optRuns') { UI.onlyRuns = t.checked; if (UI.imp) UI.imp.forEach(f => { if (f.type === 'workouts') f.recs.forEach(r => { if (r.cls === 'new' && r.sport !== 'run') r.inc = !UI.onlyRuns; }); }); rerender(); return; }
   if (t.id === 'optOverwrite') { UI.overwriteManual = t.checked; return; }
+  if (t.dataset && t.dataset.sopt) { const [fi, k] = t.dataset.sopt.split(':'); UI.imp[+fi].an.opts[k] = t.checked; return; }
+  if (t.dataset && t.dataset.srace) {
+    const [fi, ri] = t.dataset.srace.split(':').map(Number), an = UI.imp[fi].an;
+    an.races[ri].isRace = t.checked;
+    if (!t.checked && an.opts.ref === ri) an.opts.ref = stravaRec(an);
+    if (t.checked && an.opts.ref < 0) an.opts.ref = stravaRec(an);
+    rerender(); return;
+  }
+  if (t.dataset && t.dataset.sref) { UI.imp[+t.dataset.sref].an.opts.ref = +t.value; rerender(); return; }
+  if (t.dataset && t.dataset.srange) { UI.imp[+t.dataset.srange].an.opts.range = +t.value; rerender(); return; }
+  if (t.name === 'refRace') {
+    const r = S.races.find(x => x.id === t.value);
+    if (r) { setRef(r); saveState(); recompute(); rerender(); toast('Referenz gesetzt – Einschätzung und Paces neu berechnet'); }
+    return;
+  }
   if (t.id === 'bkFile' && t.files && t.files[0]) { const rd = new FileReader(); rd.onload = () => importBackup(String(rd.result)); rd.readAsText(t.files[0]); t.value = ''; return; }
   if (t.name === 'theme' && VIEW === 'einstellungen') { S.settings.theme = t.value; saveState(); applyTheme(); }
 });
@@ -2473,6 +2786,7 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target;
   if (f.id === 'dayForm') saveDayForm(f);
+  else if (f.id === 'raceForm') saveRaceForm(f);
   else if (f.id === 'settingsForm') {
     const { s, errs } = readSettingsForm(f);
     if (errs.length) { toast(errs[0]); return; }
