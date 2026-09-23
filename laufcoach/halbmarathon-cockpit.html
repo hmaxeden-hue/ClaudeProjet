@@ -1407,6 +1407,8 @@ const VIEWS = ['heute', 'tagebuch', 'plan', 'verlauf', 'wettkampf', 'import', 'e
 let VIEW = 'heute';
 const UI = { logDate: null, editWorkout: null, raceT: 'plan', imp: null, logLimit: 45, showBackup: false, onlyRuns: true, overwriteManual: false };
 const hostTheme = document.documentElement.getAttribute('data-theme');
+/* In einer eingebetteten Web-Vorschau sind Downloads gesperrt – dort nur Kopieren/Anzeigen anbieten */
+const FRAMED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 
 function recompute(){ CUR.A = assess(); CUR.PLAN = buildPlan(CUR.A); }
 
@@ -2309,7 +2311,7 @@ function viewEinstellungen(){
   h += '<div class="save-bar"><button class="btn primary" type="submit">Speichern & Plan neu berechnen</button><span class="small muted">Plan, Paces und Einschätzung passen sich sofort an.</span></div>';
   h += '</form>';
   h += '<section class="card" style="margin-top:22px"><h3>Datensicherung (JSON)</h3><p class="ink2 small">Die Daten liegen nur in diesem Browser. Sichere sie regelmässig – zum Beispiel einmal pro Woche. Mit dem Backup ziehst Du die Daten auch auf ein anderes Gerät oder in einen anderen Browser um. Startet kein Download (z. B. in einer Web-Vorschau), nutze «In Zwischenablage kopieren» oder «Backup als Text anzeigen».</p>' +
-    '<div class="actions"><button class="btn primary" data-act="exportDl">Backup herunterladen</button><button class="btn" data-act="exportCopy">In Zwischenablage kopieren</button><button class="btn ghost" data-act="exportShow">' + (UI.showBackup ? 'Backup ausblenden' : 'Backup als Text anzeigen') + '</button></div>' +
+    '<div class="actions">' + (FRAMED ? '' : '<button class="btn primary" data-act="exportDl">Backup herunterladen</button>') + '<button class="btn" data-act="exportCopy">In Zwischenablage kopieren</button><button class="btn ghost" data-act="exportShow">' + (UI.showBackup ? 'Backup ausblenden' : 'Backup als Text anzeigen') + '</button></div>' +
     (UI.showBackup ? '<div class="field" style="margin-top:12px"><label for="bkOut">Backup-Inhalt</label><textarea id="bkOut" readonly style="min-height:160px;font-family:ui-monospace,monospace;font-size:12px">' + esc(JSON.stringify(S)) + '</textarea></div>' : '') +
     '<div class="grid g-2" style="margin-top:16px"><div class="field"><label for="bkFile">Backup-Datei einlesen</label><input type="file" id="bkFile" accept=".json,application/json"></div>' +
     '<div class="field"><label for="bkIn">…oder Backup-Text einfügen</label><textarea id="bkIn" placeholder="{&quot;v&quot;:1, …}"></textarea><div><button class="btn sm" data-act="importText" style="margin-top:6px">Text einlesen</button></div></div></div>' +
