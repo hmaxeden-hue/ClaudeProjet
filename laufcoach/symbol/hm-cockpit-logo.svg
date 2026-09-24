@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
+<defs>
+<linearGradient id="hmSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A2A42"/><stop offset=".5" stop-color="#0D5878"/><stop offset="1" stop-color="#1A8FA6"/></linearGradient>
+<radialGradient id="hmSun" cx=".5" cy=".45" r=".55"><stop offset="0" stop-color="#FFF1C9"/><stop offset=".55" stop-color="#FFC061"/><stop offset="1" stop-color="#FF8A3D"/></radialGradient>
+<radialGradient id="hmGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFB45C" stop-opacity=".55"/><stop offset="1" stop-color="#FFB45C" stop-opacity="0"/></radialGradient>
+<linearGradient id="hmLake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E5572"/><stop offset="1" stop-color="#062C40"/></linearGradient>
+<linearGradient id="hmSnow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D7ECF2"/></linearGradient>
+<clipPath id="hmClip"><rect width="64" height="64" rx="14"/></clipPath>
+</defs>
+<g clip-path="url(#hmClip)">
+<rect width="64" height="64" fill="url(#hmSky)"/>
+<circle cx="44" cy="20" r="15" fill="url(#hmGlow)"/>
+<circle cx="44" cy="20" r="7.5" fill="url(#hmSun)"/>
+<path d="M-2 40 L6 34.5 L11 37 L18 28.5 L22 31.5 L27 24.5 L31.5 29.5 L36 27 L42.5 33 L48 30.5 L66 40.5 V66 H-2 Z" fill="#7CC3D6" opacity=".45"/>
+<path d="M-2 44.5 L8.5 37 L13.5 40 L21.5 30.5 L26.5 35.5 L31.5 31 L39.5 39.5 L45.5 36.5 L66 46 V66 H-2 Z" fill="url(#hmSnow)"/>
+<path d="M21.5 30.5 L26.5 35.5 L24.2 34.6 L22.6 36.8 L21 34.6 L18.6 36.4 Z M31.5 31 L39.5 39.5 L36.4 37.6 L34.2 39.6 L32.8 36.5 Z" fill="#B9DCE7"/>
+<rect x="-2" y="45" width="68" height="21" fill="url(#hmLake)"/>
+<path d="M9 48.5 H19 M44 48.5 H56 M26 51 H33" stroke="#FFC061" stroke-opacity=".35" stroke-width="1" stroke-linecap="round"/>
+<path d="M5.5 57.5 C 15 51.5, 25 61, 35.5 55 S 51 50.5, 57 52" fill="none" stroke="#FFB24D" stroke-width="3.6" stroke-linecap="round"/>
+<circle cx="57" cy="52" r="3.3" fill="#FFF1C9" stroke="#FF8A3D" stroke-width="1.4"/>
+</g>
+<rect x=".5" y=".5" width="63" height="63" rx="13.5" fill="none" stroke="#FFFFFF" stroke-opacity=".12"/>
+</svg>
